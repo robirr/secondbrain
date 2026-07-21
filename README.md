@@ -30,6 +30,20 @@ docker build -t second-brain-app .
 docker run -d --restart unless-stopped -p 8686:80 --name second-brain-app second-brain-app
 ```
 
+## Produktive Daten einbinden (NAS)
+Die produktiven Daten liegen auf dem NAS und werden read-only in den Container gemountet.
+```bash
+cp .env.example .env
+# in .env den Pfad setzen, z.B.:
+# SECOND_BRAIN_DATA=/mnt/user/appdata/secondbrain/data
+docker compose up -d --build
+```
+Der Ordner wird unter `/data` im Container bereitgestellt (die App lädt daraus z.B. `graph.json`).
+Ist `SECOND_BRAIN_DATA` nicht gesetzt, wird `./data` verwendet.
+
+> Status: das Mount/Pfad-Setup ist fertig. Das Laden der realen Daten in die Ansichten
+> (Mapping `graph.json` → Knoten/Cluster) ist der nächste App-Schritt.
+
 ## Struktur
 - `src/components/` — Sidebar, Topbar, Search, ViewSwitcher, RingView, CloudView, LayerView,
   GraphView, GlobeView, InspectorPanel, ViewSettingsPanel, RightPanel, Starfield

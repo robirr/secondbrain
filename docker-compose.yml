@@ -1,6 +1,8 @@
 # Second Brain — Ansicht · Docker Compose (für Unraid)
 # Start:  docker compose up -d --build
 # Web-UI: http://<UNRAID-IP>:8686
+#
+# Produktive Daten: Pfad in .env setzen (SECOND_BRAIN_DATA) — siehe .env.example.
 services:
   second-brain-app:
     build: .
@@ -10,6 +12,10 @@ services:
       - "8686:80"          # Host-Port 8686 (frei wählbar) -> Container-Port 80
     environment:
       - TZ=Europe/Zurich
+    volumes:
+      # Produktive Daten vom NAS (read-only). Die App lädt sie zur Laufzeit unter /data
+      # (erwartet z.B. graph.json). Ist der Pfad nicht gesetzt, wird ./data verwendet.
+      - ${SECOND_BRAIN_DATA:-./data}:/usr/share/nginx/html/data:ro
     restart: unless-stopped
     labels:
       # Unraid: WebUI-Link + Icon in der Docker-Übersicht
