@@ -2,7 +2,6 @@ import { useEffect, useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { KNOWLEDGE } from '../data/demo'
 import type { VizNode } from '../data/demo'
 import { useStore } from '../store'
 
@@ -43,7 +42,9 @@ function Marker({ node, pos }: { node: VizNode; pos: [number, number, number] })
 }
 
 function Scene() {
-  const markers = useMemo(() => KNOWLEDGE.map((n, i) => ({ n, pos: toVec3(...(LATLON[i] ?? [0, 0]), 1.02) })), [])
+  const nodes = useStore((s) => s.nodes)
+  const knowledge = useMemo(() => nodes.filter((n) => n.type === 'knowledge'), [nodes])
+  const markers = useMemo(() => knowledge.map((n, i) => ({ n, pos: toVec3(...(LATLON[i] ?? [0, 0]), 1.02) })), [knowledge])
   return (
     <>
       <ambientLight intensity={0.6} />

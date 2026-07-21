@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { NODES, CORE, KNOWLEDGE, PROJECTS, EXTERNAL, EDGES, passesFilter } from '../data/demo'
+import { passesFilter } from '../data/demo'
 import type { VizNode } from '../data/demo'
 import { getIcon } from '../icons'
 import { useStore } from '../store'
@@ -12,7 +12,7 @@ type Pos = { x: number; y: number; deg: number }
 
 function ring(list: VizNode[], radius: number, start = -90): Record<string, Pos> {
   const out: Record<string, Pos> = {}
-  const step = 360 / list.length
+  const step = 360 / Math.max(1, list.length)
   list.forEach((n, i) => {
     const deg = start + i * step
     const rad = (deg * Math.PI) / 180
@@ -25,35 +25,39 @@ const ringVisible = (ring: number, layers: number) =>
   ring === 0 || (ring === 1 && layers >= 2) || (ring === 2 && layers >= 3) || (ring === 3 && layers >= 4)
 
 export default function RingView() {
-  const { hovered, selected, settings, setHovered, setSelected } = useStore()
+  const { hovered, selected, settings, setHovered, setSelected, nodes, edges } = useStore()
+
+  const orchestrator = useMemo(() => nodes.find((n) => n.type === 'orchestrator'), [nodes])
+  const core = useMemo(() => nodes.filter((n) => n.type === 'core'), [nodes])
+  const knowledge = useMemo(() => nodes.filter((n) => n.type === 'knowledge'), [nodes])
+  const outer = useMemo(() => nodes.filter((n) => n.type === 'project' || n.type === 'external'), [nodes])
+  const centerId = orchestrator?.id ?? 'brain'
 
   const pos = useMemo(() => ({
-    claude: { x: C, y: C, deg: 0 },
-    ...ring(CORE, R_CORE),
-    ...ring(KNOWLEDGE, R_KNOW, -90),
-    ...ring([...PROJECTS, ...EXTERNAL], R_OUT, -90),
-  } as Record<string, Pos>), [])
+    [centerId]: { x: C, y: C, deg: 0 },
+    ...ring(core, R_CORE),
+    ...ring(knowledge, R_KNOW, -90),
+    ...ring(outer, R_OUT, -90),
+  } as Record<string, Pos>), [core, knowledge, outer, centerId])
 
-  const visible = useMemo(() => NODES.filter(
+  const visible = useMemo(() => nodes.filter(
     (n) => (settings.extern || n.type !== 'external') && ringVisible(n.ring, settings.layers) && passesFilter(n, settings.filter)
-  ), [settings.extern, settings.layers, settings.filter])
+  ), [nodes, settings.extern, settings.layers, settings.filter])
   const visibleIds = useMemo(() => new Set(visible.map((n) => n.id)), [visible])
 
   const focus = hovered ?? selected
   const neighbors = useMemo(() => {
     if (!focus) return null
     const set = new Set<string>([focus])
-    EDGES.forEach((e) => { if (e.source === focus) set.add(e.target); if (e.target === focus) set.add(e.source) })
+    edges.forEach((e) => { if (e.source === focus) set.add(e.target); if (e.target === focus) set.add(e.source) })
     return set
-  }, [focus])
+  }, [focus, edges])
 
-  const baseEdges = settings.verbindungen ? EDGES.filter((e) => visibleIds.has(e.source) && visibleIds.has(e.target)) : []
-  const focusEdges = focus ? EDGES.filter((e) => (e.source === focus || e.target === focus) && visibleIds.has(e.source) && visibleIds.has(e.target)) : []
+  const baseEdges = settings.verbindungen ? edges.filter((e) => visibleIds.has(e.source) && visibleIds.has(e.target)) : []
+  const focusEdges = focus ? edges.filter((e) => (e.source === focus || e.target === focus) && visibleIds.has(e.source) && visibleIds.has(e.target)) : []
   const dim = (id: string) => (neighbors && !neighbors.has(id) ? 0.2 : 1)
   const edgeColor = (kind: string, strong: boolean) =>
-    kind === 'integrates'
-      ? `rgba(135,152,181,${strong ? 0.5 : 0.14})`
-      : `rgba(139,124,246,${strong ? 0.6 : 0.12})`
+    kind === 'integrates' ? `rgba(135,152,181,${strong ? 0.5 : 0.14})` : `rgba(139,124,246,${strong ? 0.6 : 0.12})`
 
   return (
     <div className="relative flex h-full w-full items-center justify-center p-6">
@@ -62,7 +66,7 @@ export default function RingView() {
           {[R_CORE, R_KNOW, R_OUT].map((r) => (
             <circle key={r} cx={C} cy={C} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
           ))}
-          {settings.layers >= 2 && CORE.map((n) => (
+          {settings.layers >= 2 && core.map((n) => pos[n.id] && (
             <line key={n.id} x1={C} y1={C} x2={pos[n.id].x} y2={pos[n.id].y} stroke="rgba(139,124,246,0.09)" strokeWidth={1} />
           ))}
           {[...baseEdges, ...focusEdges].map((e, i) => {
@@ -72,7 +76,7 @@ export default function RingView() {
               strokeWidth={strong ? 1.75 : 1} strokeDasharray={e.kind === 'integrates' ? '4 4' : undefined} />
           })}
 
-          {visible.map((n) => (
+          {visible.map((n) => pos[n.id] && (
             <Node key={n.id} n={n} p={pos[n.id]} opacity={dim(n.id)} focused={focus === n.id} settings={settings}
               onEnter={() => setHovered(n.id)} onLeave={() => setHovered(null)}
               onClick={() => setSelected(selected === n.id ? null : n.id)} />

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Search as SearchIcon } from 'lucide-react'
-import { NODES } from '../data/demo'
 import { getIcon } from '../icons'
 import { useStore } from '../store'
 
@@ -14,6 +13,7 @@ export default function Search() {
   const inputRef = useRef<HTMLInputElement>(null)
   const setSelected = useStore((s) => s.setSelected)
   const setHovered = useStore((s) => s.setHovered)
+  const nodes = useStore((s) => s.nodes)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -25,7 +25,7 @@ export default function Search() {
   }, [])
 
   const results = q.trim()
-    ? NODES.filter((n) => n.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 8)
+    ? nodes.filter((n) => n.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 8)
     : []
 
   const choose = (id: string) => { setSelected(id); setQ(''); setOpen(false); inputRef.current?.blur() }

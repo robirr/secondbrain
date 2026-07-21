@@ -1,4 +1,3 @@
-import { KNOWLEDGE } from '../data/demo'
 import { getIcon } from '../icons'
 import { useStore } from '../store'
 
@@ -10,7 +9,8 @@ const POS: [number, number][] = [
 ]
 
 export default function CloudView() {
-  const { selected, setSelected, setHovered, settings } = useStore()
+  const { selected, setSelected, setHovered, settings, nodes } = useStore()
+  const KNOWLEDGE = nodes.filter((n) => n.type === 'knowledge')
 
   return (
     <div className="relative h-full w-full overflow-hidden">

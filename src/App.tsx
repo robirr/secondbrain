@@ -1,11 +1,15 @@
+import { useEffect } from 'react'
 import Starfield from './components/Starfield'
 import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
 import RightPanel from './components/RightPanel'
 import ViewSwitcher from './components/ViewSwitcher'
 import { CLUSTERS } from './data/clusters'
+import { useStore } from './store'
 
 export default function App() {
+  const loadData = useStore((s) => s.loadData)
+  useEffect(() => { loadData() }, [loadData])
   return (
     <div className="relative flex h-screen w-screen overflow-hidden text-ink">
       <Starfield />

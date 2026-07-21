@@ -1,5 +1,4 @@
 import { X, Crosshair, Share2, Waypoints, ExternalLink } from 'lucide-react'
-import { NODES, EDGES } from '../data/demo'
 import type { Status } from '../data/demo'
 import { useStore } from '../store'
 
@@ -11,14 +10,14 @@ const STATUS_LABEL: Record<Status, string> = { active: 'aktiv', inactive: 'inakt
 const STATUS_COLOR: Record<Status, string> = { active: '#57d07f', inactive: '#8798b5', warning: '#f6c344', archived: '#565d70' }
 
 export default function InspectorPanel() {
-  const { selected, setSelected, setHovered } = useStore()
-  const node = NODES.find((n) => n.id === selected)
+  const { selected, setSelected, setHovered, nodes, edges } = useStore()
+  const node = nodes.find((n) => n.id === selected)
   if (!node) return null
 
-  const connections = EDGES
+  const connections = edges
     .filter((e) => e.source === node.id || e.target === node.id)
     .map((e) => (e.source === node.id ? e.target : e.source))
-  const connNodes = [...new Set(connections)].map((id) => NODES.find((n) => n.id === id)!).filter(Boolean)
+  const connNodes = [...new Set(connections)].map((id) => nodes.find((n) => n.id === id)!).filter(Boolean)
 
   return (
     <div className="flex h-full flex-col">

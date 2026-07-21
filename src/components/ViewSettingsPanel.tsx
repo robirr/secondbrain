@@ -1,7 +1,6 @@
 import { Cloud, Globe, Disc3, Layers, Share2, Boxes, Save, RotateCcw } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { CLUSTERS } from '../data/clusters'
-import { STATS } from '../data/demo'
 import { useStore } from '../store'
 import type { Settings } from '../store'
 
@@ -15,7 +14,8 @@ const VIEWS: { key: string; label: string; icon: LucideIcon }[] = [
 ]
 
 export default function ViewSettingsPanel() {
-  const { settings, setSetting } = useStore()
+  const { settings, setSetting, nodes, edges, dataSource } = useStore()
+  const activeProjects = nodes.filter((n) => n.type === 'project' && n.status === 'active').length
 
   return (
     <div className="flex h-full flex-col">
@@ -101,9 +101,16 @@ export default function ViewSettingsPanel() {
 
         <Group title="Informationen">
           <div className="grid grid-cols-3 gap-2">
-            <Stat label="Knoten" value={String(STATS.nodes)} />
-            <Stat label="Verbind." value={String(STATS.edges)} />
-            <Stat label="Aktiv" value={String(STATS.activeProjects)} />
+            <Stat label="Knoten" value={String(nodes.length)} />
+            <Stat label="Verbind." value={String(edges.length)} />
+            <Stat label="Aktiv" value={String(activeProjects)} />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[11px] text-faint">
+            <span>Datenquelle</span>
+            <span className="inline-flex items-center gap-1.5 font-mono">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: dataSource === 'live' ? '#57d07f' : '#8798b5' }} />
+              {dataSource === 'live' ? 'Live (graph.json)' : 'Demo'}
+            </span>
           </div>
         </Group>
       </div>

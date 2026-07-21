@@ -25,3 +25,6 @@ dist-ssr
 
 # Compose-Env (maschinenspezifische Pfade)
 .env
+
+# lokale Test-Daten (nicht committen)
+public/data/

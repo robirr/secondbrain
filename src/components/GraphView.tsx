@@ -1,36 +1,37 @@
 import { useMemo } from 'react'
-import { NODES, EDGES, passesFilter } from '../data/demo'
+import { passesFilter } from '../data/demo'
 import { useStore } from '../store'
 
 const C = 500, R = 388
 const TYPE_ORDER = ['core', 'knowledge', 'project', 'external'] as const
 
 export default function GraphView() {
-  const { hovered, selected, setHovered, setSelected, settings } = useStore()
+  const { hovered, selected, setHovered, setSelected, settings, nodes, edges: allEdges } = useStore()
 
+  const centerId = useMemo(() => nodes.find((n) => n.type === 'orchestrator')?.id ?? 'brain', [nodes])
   const pos = useMemo(() => {
-    const out: Record<string, { x: number; y: number }> = { claude: { x: C, y: C } }
-    const others = NODES.filter((n) => n.type !== 'orchestrator')
+    const out: Record<string, { x: number; y: number }> = { [centerId]: { x: C, y: C } }
+    const others = nodes.filter((n) => n.type !== 'orchestrator')
       .filter((n) => settings.extern || n.type !== 'external')
       .filter((n) => passesFilter(n, settings.filter))
       .sort((a, b) => TYPE_ORDER.indexOf(a.type as never) - TYPE_ORDER.indexOf(b.type as never))
-    const step = (Math.PI * 2) / others.length
+    const step = (Math.PI * 2) / Math.max(1, others.length)
     others.forEach((n, i) => {
       const a = -Math.PI / 2 + i * step
       out[n.id] = { x: C + R * Math.cos(a), y: C + R * Math.sin(a) }
     })
     return out
-  }, [settings.extern, settings.filter])
+  }, [nodes, centerId, settings.extern, settings.filter])
 
   const focus = hovered ?? selected
   const nb = useMemo(() => {
     if (!focus) return null
     const s = new Set([focus])
-    EDGES.forEach((e) => { if (e.source === focus) s.add(e.target); if (e.target === focus) s.add(e.source) })
+    allEdges.forEach((e) => { if (e.source === focus) s.add(e.target); if (e.target === focus) s.add(e.source) })
     return s
-  }, [focus])
+  }, [focus, allEdges])
 
-  const edges = EDGES.filter((e) => pos[e.source] && pos[e.target])
+  const edges = allEdges.filter((e) => pos[e.source] && pos[e.target])
 
   return (
     <div className="relative flex h-full w-full items-center justify-center p-6">
@@ -42,7 +43,7 @@ export default function GraphView() {
             return <path key={i} d={`M${a.x},${a.y} Q ${C},${C} ${b.x},${b.y}`} fill="none"
               stroke={on ? 'rgba(139,124,246,0.6)' : 'rgba(255,255,255,0.06)'} strokeWidth={on ? 1.6 : 1} />
           })}
-          {NODES.filter((n) => pos[n.id]).map((n) => {
+          {nodes.filter((n) => pos[n.id]).map((n) => {
             const p = pos[n.id], orch = n.type === 'orchestrator'
             const dim = nb && !nb.has(n.id) ? 0.2 : 1
             const on = focus === n.id
