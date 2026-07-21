@@ -1,13 +1,15 @@
 # Second Brain — ALLES IN EINEM CONTAINER (App + qmd-Suche)
-# Start:  docker compose up -d --build
+# Start:  docker compose up -d          (zieht das fertige Image, kein Build nötig)
 # Web-UI: http://<UNRAID-IP>:8686
 #
+# Das Image wird automatisch per GitHub Actions gebaut und liegt öffentlich in der
+# GitHub Container Registry. Auf dem NAS brauchst du daher NUR diese Datei + eine .env.
 # Nur EINE Pflichtangabe: der Pfad zu deinen Notizen (SECOND_BRAIN_DATA) in .env.
 # qmd (Bedeutungssuche) läuft mit im Container — kein zweiter Dienst nötig.
 services:
   second-brain:
-    build: .
-    image: second-brain:latest
+    image: ghcr.io/robirr/secondbrain:latest
+    pull_policy: always          # bei jedem up die neueste Version ziehen
     container_name: second-brain
     ports:
       - "8686:80"          # Host-Port 8686 (frei wählbar) -> Container-Port 80
@@ -27,3 +29,8 @@ services:
 
 volumes:
   qmd-home:
+
+# --- Selbst bauen statt ziehen? (nur nötig, wenn du den Code lokal geändert hast) ---
+# Das ganze Repo muss dann vorliegen. Entweder:
+#   docker build -t ghcr.io/robirr/secondbrain:latest .   &&   docker compose up -d
+# oder in der Datei oben "image:" durch "build: ." ersetzen und  docker compose up -d --build.

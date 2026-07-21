@@ -33,10 +33,13 @@ npm run dev          # http://localhost:5173  (Dev-Proxy /qmd -> localhost:8181)
 ```
 
 ### Deployment via Docker (z. B. Unraid) — alles in EINEM Container
+Das Image wird per GitHub Actions gebaut und liegt öffentlich unter
+`ghcr.io/robirr/secondbrain`. Auf dem NAS brauchst du nur `docker-compose.yml` + `.env` —
+**kein Repo-Klon, kein lokaler Build**:
 ```bash
 cp .env.example .env
 #  SECOND_BRAIN_DATA -> Vault-WURZEL (graph.json + .md-Dateien)   — EINZIGE Pflichtangabe
-docker compose up -d --build     # -> http://<HOST>:8686
+docker compose up -d             # zieht das fertige Image -> http://<HOST>:8686
 ```
 **Ein Image, ein Container.** Die App (nginx) **und** die qmd-Bedeutungssuche laufen zusammen im
 selben Container — kein separater qmd-Dienst, kein `host.docker.internal`. qmd wird beim ersten Start

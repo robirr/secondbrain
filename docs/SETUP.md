@@ -54,12 +54,17 @@ node system/scripts/capture-server.mjs   # HTTP-Capture (Push-Kanal, z.B. für A
 Hinweise: In `system/scripts/lib.mjs` die `<NAS-IP>` durch echte Hosts ersetzen; in `sync.mjs` `QMD_JS`
 auf deinen qmd-Pfad setzen (oder qmd auf PATH).
 
-**7) App deployen** (Docker/Unraid) — **alles in einem Container**
+**7) App deployen** (Docker/Unraid) — **alles in einem Container, fertiges Image**
+Der Workflow `.github/workflows/docker.yml` baut das Image bei jedem Push und veröffentlicht es
+unter `ghcr.io/<user>/<repo>`. Auf dem NAS genügen `docker-compose.yml` + `.env`:
 ```bash
 cp .env.example .env
 #  SECOND_BRAIN_DATA -> Vault-WURZEL (graph.json + .md-Dateien)   — EINZIGE Pflichtangabe
-docker compose up -d --build             # -> http://<HOST>:8686
+docker compose up -d                     # zieht das Image -> http://<HOST>:8686
 ```
+> **Einmalig nach dem ersten Actions-Lauf:** das GHCR-Paket auf **Public** stellen
+> (GitHub → Profil/Repo → Packages → das Paket → *Package settings* → *Change visibility*),
+> sonst verlangt der NAS beim Pull einen Login. Danach zieht `docker compose up -d` ohne Anmeldung.
 Das Image enthält App **und** qmd. Beim ersten Start richtet der Container qmd selbst ein
 (Sammlung `brain` auf dem gemounteten Vault, Modell-Download ~2–3 GB, Embeddings) — das dauert
 einmalig. Modelle + Index liegen im Volume `qmd-home` und bleiben erhalten. Schritt 3 (qmd auf dem
