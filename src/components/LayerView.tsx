@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { getIcon } from '../icons'
 import { useStore } from '../store'
+import { useDisplayNodes, isNoteId } from '../display'
 
 const GROUPS: { title: string; hint: string; type: string }[] = [
   { title: 'Orchestrator', hint: 'Steuerung & Entscheidungen', type: 'orchestrator' },
@@ -11,7 +12,8 @@ const GROUPS: { title: string; hint: string; type: string }[] = [
 ]
 
 export default function LayerView() {
-  const { selected, setSelected, setHovered, nodes } = useStore()
+  const { selected, setSelected, setHovered, setOpenNote, enterDrill } = useStore()
+  const { nodes } = useDisplayNodes()
   const layers = useMemo(
     () => GROUPS.map((g) => ({ ...g, nodes: nodes.filter((n) => n.type === g.type) })).filter((g) => g.nodes.length),
     [nodes],
@@ -34,7 +36,8 @@ export default function LayerView() {
               return (
                 <button key={n.id}
                   onMouseEnter={() => setHovered(n.id)} onMouseLeave={() => setHovered(null)}
-                  onClick={() => setSelected(on ? null : n.id)}
+                  onClick={() => (isNoteId(n.id) ? setOpenNote(n.id) : setSelected(on ? null : n.id))}
+                  onDoubleClick={() => { if (n.meta?.Ordner) enterDrill(n.meta.Ordner as string) }}
                   className={['flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[12.5px] transition-colors',
                     on ? 'text-ink' : 'border-line text-muted hover:bg-white/[0.05] hover:text-ink'].join(' ')}
                   style={on ? { borderColor: n.color, background: `${n.color}1f` } : undefined}>

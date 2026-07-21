@@ -22,6 +22,8 @@ interface State {
   selected: string | null
   hovered: string | null
   openNote: string | null // Dateipfad der geöffneten Notiz (Lesepanel)
+  drill: string | null // Cluster-Ordner, in den hineingezoomt wird
+  drillReturnView: string
   settings: Settings
   nodes: VizNode[]
   edges: VizEdge[]
@@ -30,6 +32,8 @@ interface State {
   setSelected: (id: string | null) => void
   setHovered: (id: string | null) => void
   setOpenNote: (path: string | null) => void
+  enterDrill: (folder: string) => void
+  exitDrill: () => void
   setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void
   applySettings: (s: Partial<Settings>) => void
   loadData: () => Promise<void>
@@ -39,6 +43,8 @@ export const useStore = create<State>((set) => ({
   selected: null,
   hovered: null,
   openNote: null,
+  drill: null,
+  drillReturnView: 'ring',
   rawNotes: [],
   settings: {
     view: 'ring',
@@ -56,6 +62,13 @@ export const useStore = create<State>((set) => ({
   setSelected: (id) => set({ selected: id }),
   setHovered: (id) => set({ hovered: id }),
   setOpenNote: (path) => set({ openNote: path }),
+  enterDrill: (folder) => set((s) => ({
+    drill: folder,
+    drillReturnView: s.drill ? s.drillReturnView : s.settings.view,
+    settings: { ...s.settings, view: 'ring' },
+    selected: null,
+  })),
+  exitDrill: () => set((s) => ({ drill: null, settings: { ...s.settings, view: s.drillReturnView }, selected: null })),
   setSetting: (key, value) => set((s) => ({ settings: { ...s.settings, [key]: value } })),
   applySettings: (partial) => set((s) => ({ settings: { ...s.settings, ...partial } })),
   loadData: async () => {

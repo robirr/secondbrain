@@ -9,7 +9,7 @@ const POS: [number, number][] = [
 ]
 
 export default function CloudView() {
-  const { selected, setSelected, setHovered, settings, nodes } = useStore()
+  const { selected, setSelected, setHovered, settings, nodes, enterDrill } = useStore()
   const KNOWLEDGE = nodes.filter((n) => n.type === 'knowledge')
 
   return (
@@ -37,6 +37,8 @@ export default function CloudView() {
             <button
               onMouseEnter={() => setHovered(c.id)} onMouseLeave={() => setHovered(null)}
               onClick={() => setSelected(on ? null : c.id)}
+              onDoubleClick={() => { if (c.meta?.Ordner) enterDrill(c.meta.Ordner as string) }}
+              title="Doppelklick: hineinzoomen"
               className="glass relative grid h-16 w-16 place-items-center rounded-2xl transition-colors"
               style={{ borderColor: on ? c.color : undefined, boxShadow: on ? `0 0 20px -4px ${c.color}` : undefined }}>
               <Icon size={22} color={c.color} strokeWidth={1.6} />

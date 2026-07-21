@@ -6,7 +6,9 @@ import RightPanel from './components/RightPanel'
 import ViewSwitcher from './components/ViewSwitcher'
 import NotePanel from './components/NotePanel'
 import { CLUSTERS } from './data/clusters'
+import { clusterMeta } from './data/load'
 import { useStore } from './store'
+import { ChevronLeft, Layers as LayersIcon } from 'lucide-react'
 
 export default function App() {
   const loadData = useStore((s) => s.loadData)
@@ -23,12 +25,33 @@ export default function App() {
         <Topbar />
         <section className="relative flex-1 overflow-hidden">
           <ViewSwitcher />
+          <DrillBar />
           <Legend />
         </section>
       </main>
 
       <RightPanel />
       <NotePanel />
+    </div>
+  )
+}
+
+function DrillBar() {
+  const drill = useStore((s) => s.drill)
+  const exitDrill = useStore((s) => s.exitDrill)
+  const rawNotes = useStore((s) => s.rawNotes)
+  if (!drill) return null
+  const m = clusterMeta(drill)
+  const count = rawNotes.filter((r) => r.cluster === drill).length
+  return (
+    <div className="glass fade-up absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full py-1.5 pl-1.5 pr-4">
+      <button onClick={exitDrill}
+        className="flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-1 text-[12px] text-muted transition-colors hover:text-ink">
+        <ChevronLeft size={14} /> Übersicht
+      </button>
+      <LayersIcon size={13} style={{ color: m.color }} />
+      <span className="text-[13px] font-medium text-ink">{m.label}</span>
+      <span className="font-mono text-[11px] text-faint">{count} Notizen</span>
     </div>
   )
 }

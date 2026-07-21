@@ -3,6 +3,7 @@ import { passesFilter } from '../data/demo'
 import type { VizNode } from '../data/demo'
 import { getIcon } from '../icons'
 import { useStore } from '../store'
+import { useDisplayNodes, isNoteId } from '../display'
 
 const C = 500
 const R_CORE = 172, R_KNOW = 322, R_OUT = 452
@@ -25,7 +26,8 @@ const ringVisible = (ring: number, layers: number) =>
   ring === 0 || (ring === 1 && layers >= 2) || (ring === 2 && layers >= 3) || (ring === 3 && layers >= 4)
 
 export default function RingView() {
-  const { hovered, selected, settings, setHovered, setSelected, nodes, edges } = useStore()
+  const { hovered, selected, settings, setHovered, setSelected, setOpenNote, enterDrill } = useStore()
+  const { nodes, edges, isDrill } = useDisplayNodes()
 
   const orchestrator = useMemo(() => nodes.find((n) => n.type === 'orchestrator'), [nodes])
   const core = useMemo(() => nodes.filter((n) => n.type === 'core'), [nodes])
@@ -40,9 +42,9 @@ export default function RingView() {
     ...ring(outer, R_OUT, -90),
   } as Record<string, Pos>), [core, knowledge, outer, centerId])
 
-  const visible = useMemo(() => nodes.filter(
+  const visible = useMemo(() => isDrill ? nodes : nodes.filter(
     (n) => (settings.extern || n.type !== 'external') && ringVisible(n.ring, settings.layers) && passesFilter(n, settings.filter)
-  ), [nodes, settings.extern, settings.layers, settings.filter])
+  ), [nodes, isDrill, settings.extern, settings.layers, settings.filter])
   const visibleIds = useMemo(() => new Set(visible.map((n) => n.id)), [visible])
 
   const focus = hovered ?? selected
@@ -79,7 +81,8 @@ export default function RingView() {
           {visible.map((n) => pos[n.id] && (
             <Node key={n.id} n={n} p={pos[n.id]} opacity={dim(n.id)} focused={focus === n.id} settings={settings}
               onEnter={() => setHovered(n.id)} onLeave={() => setHovered(null)}
-              onClick={() => setSelected(selected === n.id ? null : n.id)} />
+              onClick={() => (isNoteId(n.id) ? setOpenNote(n.id) : setSelected(selected === n.id ? null : n.id))}
+              onDoubleClick={() => { if (n.meta?.Ordner && !isDrill) enterDrill(n.meta.Ordner as string) }} />
           ))}
         </svg>
       </div>
@@ -87,9 +90,9 @@ export default function RingView() {
   )
 }
 
-function Node({ n, p, opacity, focused, settings, onEnter, onLeave, onClick }: {
+function Node({ n, p, opacity, focused, settings, onEnter, onLeave, onClick, onDoubleClick }: {
   n: VizNode; p: Pos; opacity: number; focused: boolean; settings: { labels: boolean; detail: number }
-  onEnter: () => void; onLeave: () => void; onClick: () => void
+  onEnter: () => void; onLeave: () => void; onClick: () => void; onDoubleClick: () => void
 }) {
   const Icon = getIcon(n.icon)
   const r = SIZE[n.type]
@@ -103,7 +106,7 @@ function Node({ n, p, opacity, focused, settings, onEnter, onLeave, onClick }: {
 
   return (
     <g transform={`translate(${p.x},${p.y})`} opacity={opacity}
-       onMouseEnter={onEnter} onMouseLeave={onLeave} onClick={onClick}
+       onMouseEnter={onEnter} onMouseLeave={onLeave} onClick={onClick} onDoubleClick={onDoubleClick}
        className="cursor-pointer transition-opacity duration-300">
       {orch && <>
         <circle r={r + 14} fill="none" stroke={n.color} strokeOpacity={0.18} strokeWidth={1} />

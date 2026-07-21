@@ -19,8 +19,9 @@ const CLUSTER_META: Record<string, { label: string; color: string; icon: string 
   '50-Projekte': { label: 'Projekte', color: '#4c8dff', icon: 'rocket' },
   '90-Archiv': { label: 'Archiv', color: '#565d70', icon: 'archive' },
 }
-const metaFor = (cl: string) =>
+export const clusterMeta = (cl: string) =>
   CLUSTER_META[cl] ?? { label: cl.replace(/^[0-9]+[-_]/, '') || cl, color: '#8798b5', icon: 'grip' }
+const metaFor = clusterMeta
 
 /** graph.json → aggregiert nach Cluster (Second-Brain-Zentrum + Cluster-Hubs + Cross-Cluster-Kanten). */
 export function mapGraph(g: GraphJson): { nodes: VizNode[]; edges: VizEdge[] } {

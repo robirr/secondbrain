@@ -1,19 +1,20 @@
 import { useMemo } from 'react'
 import { passesFilter } from '../data/demo'
 import { useStore } from '../store'
+import { useDisplayNodes, isNoteId } from '../display'
 
 const C = 500, R = 388
 const TYPE_ORDER = ['core', 'knowledge', 'project', 'external'] as const
 
 export default function GraphView() {
-  const { hovered, selected, setHovered, setSelected, settings, nodes, edges: allEdges } = useStore()
+  const { hovered, selected, setHovered, setSelected, settings, setOpenNote, enterDrill } = useStore()
+  const { nodes, edges: allEdges, isDrill } = useDisplayNodes()
 
   const centerId = useMemo(() => nodes.find((n) => n.type === 'orchestrator')?.id ?? 'brain', [nodes])
   const pos = useMemo(() => {
     const out: Record<string, { x: number; y: number }> = { [centerId]: { x: C, y: C } }
     const others = nodes.filter((n) => n.type !== 'orchestrator')
-      .filter((n) => settings.extern || n.type !== 'external')
-      .filter((n) => passesFilter(n, settings.filter))
+      .filter((n) => isDrill || ((settings.extern || n.type !== 'external') && passesFilter(n, settings.filter)))
       .sort((a, b) => TYPE_ORDER.indexOf(a.type as never) - TYPE_ORDER.indexOf(b.type as never))
     const step = (Math.PI * 2) / Math.max(1, others.length)
     others.forEach((n, i) => {
@@ -21,7 +22,7 @@ export default function GraphView() {
       out[n.id] = { x: C + R * Math.cos(a), y: C + R * Math.sin(a) }
     })
     return out
-  }, [nodes, centerId, settings.extern, settings.filter])
+  }, [nodes, centerId, isDrill, settings.extern, settings.filter])
 
   const focus = hovered ?? selected
   const nb = useMemo(() => {
@@ -50,7 +51,9 @@ export default function GraphView() {
             return (
               <g key={n.id} transform={`translate(${p.x},${p.y})`} opacity={dim}
                  onMouseEnter={() => setHovered(n.id)} onMouseLeave={() => setHovered(null)}
-                 onClick={() => setSelected(selected === n.id ? null : n.id)} className="cursor-pointer transition-opacity duration-300">
+                 onClick={() => (isNoteId(n.id) ? setOpenNote(n.id) : setSelected(selected === n.id ? null : n.id))}
+                 onDoubleClick={() => { if (n.meta?.Ordner && !isDrill) enterDrill(n.meta.Ordner as string) }}
+                 className="cursor-pointer transition-opacity duration-300">
                 <circle r={orch ? 26 : on ? 11 : 7} fill={n.color} fillOpacity={orch ? 0.25 : 0.9}
                   stroke={n.color} strokeWidth={on || orch ? 2 : 0} style={{ filter: on || orch ? `drop-shadow(0 0 8px ${n.color})` : undefined }} />
                 {(orch || on) && (
