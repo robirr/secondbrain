@@ -19,15 +19,15 @@ npm run dev        # http://localhost:5173
 ```bash
 # im Projektordner
 docker compose up -d --build
-# danach erreichbar unter  http://<NAS-IP>:8080
+# danach erreichbar unter  http://<NAS-IP>:8686
 ```
 Das Image baut die App (Vite) und liefert sie statisch über nginx aus (SPA-Fallback).
-Port anpassen in `docker-compose.yml` (Standard `8080:80`).
+Port anpassen in `docker-compose.yml` (Standard `8686:80`).
 
 Ohne Compose:
 ```bash
 docker build -t second-brain-app .
-docker run -d --restart unless-stopped -p 8080:80 --name second-brain-app second-brain-app
+docker run -d --restart unless-stopped -p 8686:80 --name second-brain-app second-brain-app
 ```
 
 ## Struktur

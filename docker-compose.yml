@@ -1,8 +1,17 @@
+# Second Brain — Ansicht · Docker Compose (für Unraid)
+# Start:  docker compose up -d --build
+# Web-UI: http://<UNRAID-IP>:8686
 services:
-  brain-app:
+  second-brain-app:
     build: .
     image: second-brain-app:latest
     container_name: second-brain-app
     ports:
-      - "8080:80"      # NAS: http://<NAS-IP>:8080
+      - "8686:80"          # Host-Port 8686 (frei wählbar) -> Container-Port 80
+    environment:
+      - TZ=Europe/Zurich
     restart: unless-stopped
+    labels:
+      # Unraid: WebUI-Link + Icon in der Docker-Übersicht
+      - "net.unraid.docker.webui=http://[IP]:[PORT:8686]/"
+      - "net.unraid.docker.icon=https://raw.githubusercontent.com/robirr/secondbrain/main/public/favicon.svg"
