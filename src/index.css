@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+
+  --color-void: #07080b;
+  --color-ink: #e8eaf0;
+  --color-muted: #868da0;
+  --color-faint: #565d70;
+  --color-line: rgba(255, 255, 255, 0.08);
+  --color-glass: rgba(255, 255, 255, 0.035);
+
+  /* Cluster-/Systemfarben (konsistent laut Brief) */
+  --color-c-wissen: #8b7cf6;      /* Violett */
+  --color-c-projekte: #4c8dff;    /* Blau */
+  --color-c-beruf: #2dd4bf;       /* Türkis */
+  --color-c-finanzen: #f6c344;    /* Gold */
+  --color-c-gesundheit: #ff7a70;  /* Koralle */
+  --color-c-beziehungen: #e879c9; /* Magenta */
+  --color-c-kreativitaet: #ff9d4d;/* Orange */
+  --color-c-spiritualitaet: #7c83ff;/* Indigo */
+  --color-c-reisen: #57d07f;      /* Grün */
+  --color-c-sonstiges: #8798b5;   /* Grau-Blau */
+}
+
+:root { color-scheme: dark; }
+
+html, body, #root { height: 100%; margin: 0; }
+
+body {
+  background: var(--color-void);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv01", "ss01";
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* Glasflächen */
+.glass {
+  background: var(--color-glass);
+  border: 1px solid var(--color-line);
+  backdrop-filter: blur(18px) saturate(120%);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+}
+
+/* Eyebrow-Label (Mono, gesperrt) */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
+
+/* dezenter Scrollbalken */
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.12) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 99px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* weicher Rand-Glow für aktive Elemente */
+.glow-violet { box-shadow: 0 0 0 1px rgba(139,124,246,0.35), 0 0 24px -6px rgba(139,124,246,0.5); }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.fade-up { animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
