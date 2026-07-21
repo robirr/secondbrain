@@ -8,6 +8,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useStore } from '../store'
+import QmdSearch from './QmdSearch'
 
 const VIEW_KEY: Record<string, string> = {
   Architektur: 'architektur', Ebenen: 'ebenen', Globus: 'globus', Ring: 'ring', Cloud: 'cloud', Graph: 'graph',
@@ -74,6 +75,9 @@ export default function Sidebar() {
         </div>
         <div className="text-[15px] font-semibold tracking-tight">Second&nbsp;Brain</div>
       </div>
+
+      {/* qmd-Bedeutungssuche (oben links) */}
+      <QmdSearch />
 
       {/* Sektionen */}
       <nav className="flex-1 overflow-y-auto px-3 pb-4">

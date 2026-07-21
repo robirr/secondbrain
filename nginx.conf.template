@@ -1,0 +1,34 @@
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # qmd-Bedeutungssuche -> qmd-HTTP-Dienst (auf dem NAS). QMD_URL kommt aus der Umgebung.
+    location /qmd/ {
+        proxy_pass ${QMD_URL}/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_read_timeout 60s;
+    }
+
+    # Produktive Daten (gemountetes Volume) — 404 bei fehlender Datei statt SPA-Fallback
+    location /data/ {
+        try_files $uri =404;
+        add_header Cache-Control "no-cache";
+    }
+
+    # statische Assets langfristig cachen
+    location /assets/ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # SPA: alle Routen auf index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+}

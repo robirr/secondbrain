@@ -9,7 +9,9 @@ RUN npx vite build
 
 # --- Serve-Stufe: statische Auslieferung via nginx ---
 FROM nginx:alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Template wird beim Start via envsubst (${QMD_URL}) zu conf.d/default.conf
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
+ENV QMD_URL=http://host.docker.internal:8181
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1

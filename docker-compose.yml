@@ -12,6 +12,11 @@ services:
       - "8686:80"          # Host-Port 8686 (frei wählbar) -> Container-Port 80
     environment:
       - TZ=Europe/Zurich
+      # qmd-HTTP-Dienst (Bedeutungssuche). Läuft auf dem NAS: `qmd mcp --http --daemon` (Port 8181).
+      # host.docker.internal zeigt via extra_hosts auf den NAS-Host. Alternativ NAS-IP eintragen.
+      - QMD_URL=${QMD_URL:-http://host.docker.internal:8181}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       # Produktive Daten vom NAS (read-only). Die App lädt sie zur Laufzeit unter /data
       # (erwartet z.B. graph.json). Ist der Pfad nicht gesetzt, wird ./data verwendet.

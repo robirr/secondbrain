@@ -44,6 +44,21 @@ Ist `SECOND_BRAIN_DATA` nicht gesetzt, wird `./data` verwendet.
 > Status: das Mount/Pfad-Setup ist fertig. Das Laden der realen Daten in die Ansichten
 > (Mapping `graph.json` → Knoten/Cluster) ist der nächste App-Schritt.
 
+## qmd-Bedeutungssuche (Suchfeld oben links)
+Das Suchfeld oben links in der Sidebar nutzt **qmd** (lokale Hybridsuche über die echten Notizen).
+Die App ruft gleich-Origin `/qmd/query` auf; nginx (prod) bzw. Vite (dev) proxen das an den
+qmd-HTTP-Dienst.
+
+**qmd-Dienst auf dem NAS starten:**
+```bash
+qmd mcp --http --daemon        # Port 8181; qmd muss die Vault-Collection kennen (qmd collection add …)
+```
+Adresse in `.env` setzen (Standard `host.docker.internal:8181`, alternativ NAS-IP):
+```
+QMD_URL=http://192.168.1.20:8181
+```
+Läuft kein qmd-Dienst, zeigt das Feld „qmd nicht erreichbar" — die App bleibt sonst voll funktionsfähig.
+
 ## Struktur
 - `src/components/` — Sidebar, Topbar, Search, ViewSwitcher, RingView, CloudView, LayerView,
   GraphView, GlobeView, InspectorPanel, ViewSettingsPanel, RightPanel, Starfield
