@@ -16,22 +16,30 @@ export interface Settings {
   filter: FilterKey
 }
 
+export interface RawNote { id: string; title: string; cluster: string }
+
 interface State {
   selected: string | null
   hovered: string | null
+  openNote: string | null // Dateipfad der geöffneten Notiz (Lesepanel)
   settings: Settings
   nodes: VizNode[]
   edges: VizEdge[]
+  rawNotes: RawNote[]
   dataSource: 'demo' | 'live'
   setSelected: (id: string | null) => void
   setHovered: (id: string | null) => void
+  setOpenNote: (path: string | null) => void
   setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void
+  applySettings: (s: Partial<Settings>) => void
   loadData: () => Promise<void>
 }
 
 export const useStore = create<State>((set) => ({
   selected: null,
   hovered: null,
+  openNote: null,
+  rawNotes: [],
   settings: {
     view: 'ring',
     detail: 75,
@@ -47,7 +55,9 @@ export const useStore = create<State>((set) => ({
   dataSource: 'demo',
   setSelected: (id) => set({ selected: id }),
   setHovered: (id) => set({ hovered: id }),
+  setOpenNote: (path) => set({ openNote: path }),
   setSetting: (key, value) => set((s) => ({ settings: { ...s.settings, [key]: value } })),
+  applySettings: (partial) => set((s) => ({ settings: { ...s.settings, ...partial } })),
   loadData: async () => {
     try {
       const res = await fetch('data/graph.json', { cache: 'no-store' })
@@ -55,7 +65,8 @@ export const useStore = create<State>((set) => ({
       const g = await res.json()
       if (!g || !Array.isArray(g.nodes) || g.nodes.length === 0) return
       const { nodes, edges } = mapGraph(g)
-      set({ nodes, edges, dataSource: 'live', selected: null })
+      const rawNotes: RawNote[] = g.nodes.map((n: RawNote) => ({ id: n.id, title: n.title, cluster: n.cluster }))
+      set({ nodes, edges, rawNotes, dataSource: 'live', selected: null })
     } catch {
       /* Demo-Daten behalten */
     }

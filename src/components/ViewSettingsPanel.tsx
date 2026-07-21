@@ -1,8 +1,37 @@
-import { Cloud, Globe, Disc3, Layers, Share2, Boxes, Save, RotateCcw } from 'lucide-react'
+import { useState } from 'react'
+import { Cloud, Globe, Disc3, Layers, Share2, Boxes, Save, RotateCcw, Camera, Trash2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { CLUSTERS } from '../data/clusters'
 import { useStore } from '../store'
 import type { Settings } from '../store'
+
+interface Preset { name: string; settings: Settings }
+const PRESET_KEY = 'brain-presets'
+const loadPresets = (): Preset[] => { try { return JSON.parse(localStorage.getItem(PRESET_KEY) || '[]') } catch { return [] } }
+const savePresets = (p: Preset[]) => localStorage.setItem(PRESET_KEY, JSON.stringify(p))
+
+function exportScreenshot(): string | null {
+  const main = document.querySelector('main')
+  if (!main) return 'Kein Bereich zum Export.'
+  const dl = (url: string) => { const a = document.createElement('a'); a.href = url; a.download = 'second-brain.png'; a.click() }
+  const svg = main.querySelector('svg')
+  const canvas = main.querySelector('canvas')
+  if (svg) {
+    const xml = new XMLSerializer().serializeToString(svg)
+    const src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)))
+    const img = new Image()
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = 1400; c.height = 1400
+      const ctx = c.getContext('2d')!; ctx.fillStyle = '#07080b'; ctx.fillRect(0, 0, 1400, 1400)
+      ctx.drawImage(img, 0, 0, 1400, 1400)
+      c.toBlob((b) => b && dl(URL.createObjectURL(b)))
+    }
+    img.src = src
+    return null
+  }
+  if (canvas) { try { dl(canvas.toDataURL('image/png')); return null } catch { return 'Globus-Export nicht möglich.' } }
+  return 'Für diese Ansicht ist kein Screenshot verfügbar.'
+}
 
 const VIEWS: { key: string; label: string; icon: LucideIcon }[] = [
   { key: 'architektur', label: 'Architektur', icon: Boxes },
@@ -14,8 +43,13 @@ const VIEWS: { key: string; label: string; icon: LucideIcon }[] = [
 ]
 
 export default function ViewSettingsPanel() {
-  const { settings, setSetting, nodes, edges, dataSource } = useStore()
+  const { settings, setSetting, applySettings, nodes, edges, dataSource } = useStore()
   const activeProjects = nodes.filter((n) => n.type === 'project' && n.status === 'active').length
+  const [presets, setPresets] = useState<Preset[]>(loadPresets)
+  const [msg, setMsg] = useState<string | null>(null)
+  const addPreset = () => { const p = [...presets, { name: `${settings.view} · ${settings.detail}%`, settings }]; setPresets(p); savePresets(p); setMsg('Preset gespeichert.') }
+  const removePreset = (i: number) => { const p = presets.filter((_, x) => x !== i); setPresets(p); savePresets(p) }
+  const shot = () => setMsg(exportScreenshot() ?? 'Screenshot exportiert.')
 
   return (
     <div className="flex h-full flex-col">
@@ -113,16 +147,37 @@ export default function ViewSettingsPanel() {
             </span>
           </div>
         </Group>
+
+        {presets.length > 0 && (
+          <Group title="Presets">
+            <div className="space-y-1">
+              {presets.map((p, i) => (
+                <div key={i} className="flex items-center gap-2 rounded-lg border border-line bg-white/[0.02] px-2.5 py-1.5">
+                  <button onClick={() => applySettings(p.settings)} className="flex-1 truncate text-left text-[12px] text-muted hover:text-ink">{p.name}</button>
+                  <button onClick={() => removePreset(i)} title="Löschen" className="text-faint hover:text-ink"><Trash2 size={13} /></button>
+                </div>
+              ))}
+            </div>
+          </Group>
+        )}
       </div>
 
-      <div className="flex gap-2 border-t border-line p-4">
-        <button className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[rgba(139,124,246,0.16)] px-3 py-2 text-[12.5px] text-ink transition-colors hover:bg-[rgba(139,124,246,0.24)] glow-violet">
-          <Save size={14} /> Ansicht speichern
-        </button>
-        <button title="Zurücksetzen" onClick={() => resetSettings(setSetting)}
-          className="grid h-9 w-9 place-items-center rounded-lg border border-line text-muted transition-colors hover:bg-white/[0.05]">
-          <RotateCcw size={14} />
-        </button>
+      <div className="border-t border-line p-4">
+        {msg && <div className="mb-2 text-center text-[11px] text-faint">{msg}</div>}
+        <div className="flex gap-2">
+          <button onClick={addPreset}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[rgba(139,124,246,0.16)] px-3 py-2 text-[12.5px] text-ink transition-colors hover:bg-[rgba(139,124,246,0.24)] glow-violet">
+            <Save size={14} /> Preset speichern
+          </button>
+          <button title="Screenshot exportieren" onClick={shot}
+            className="grid h-9 w-9 place-items-center rounded-lg border border-line text-muted transition-colors hover:bg-white/[0.05]">
+            <Camera size={14} />
+          </button>
+          <button title="Zurücksetzen" onClick={() => resetSettings(setSetting)}
+            className="grid h-9 w-9 place-items-center rounded-lg border border-line text-muted transition-colors hover:bg-white/[0.05]">
+            <RotateCcw size={14} />
+          </button>
+        </div>
       </div>
     </div>
   )

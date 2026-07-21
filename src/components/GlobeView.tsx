@@ -78,7 +78,7 @@ export default function GlobeView() {
   }, [])
   return (
     <div className="absolute inset-0">
-      <Canvas camera={{ position: [0, 0, 2.9], fov: 45 }} dpr={[1, 2]}
+      <Canvas camera={{ position: [0, 0, 2.9], fov: 45 }} dpr={[1, 2]} gl={{ preserveDrawingBuffer: true }}
         style={{ width: '100%', height: '100%', display: 'block' }}>
         <Scene />
       </Canvas>

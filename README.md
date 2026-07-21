@@ -38,11 +38,12 @@ cp .env.example .env
 # SECOND_BRAIN_DATA=/mnt/user/appdata/secondbrain/data
 docker compose up -d --build
 ```
-Der Ordner wird unter `/data` im Container bereitgestellt (die App lädt daraus z.B. `graph.json`).
-Ist `SECOND_BRAIN_DATA` nicht gesetzt, wird `./data` verwendet.
+`SECOND_BRAIN_DATA` auf die **Vault-Wurzel** zeigen lassen — sie enthält `graph.json` (für die
+Ansichten) **und** die `.md`-Dateien (für das Notiz-Lesepanel). Der Ordner wird unter `/data`
+bereitgestellt. Ohne Mount → Demo-Daten.
 
-> Status: das Mount/Pfad-Setup ist fertig. Das Laden der realen Daten in die Ansichten
-> (Mapping `graph.json` → Knoten/Cluster) ist der nächste App-Schritt.
+- Ansichten: laden `data/graph.json`, aggregiert nach Cluster.
+- Notiz-Lesepanel: lädt `data/<cluster>/<datei>.md` (Klick auf qmd-Treffer oder Notiz im Inspector).
 
 ## qmd-Bedeutungssuche (Suchfeld oben links)
 Das Suchfeld oben links in der Sidebar nutzt **qmd** (lokale Hybridsuche über die echten Notizen).

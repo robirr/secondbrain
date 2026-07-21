@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
 import RightPanel from './components/RightPanel'
 import ViewSwitcher from './components/ViewSwitcher'
+import NotePanel from './components/NotePanel'
 import { CLUSTERS } from './data/clusters'
 import { useStore } from './store'
 
@@ -27,6 +28,7 @@ export default function App() {
       </main>
 
       <RightPanel />
+      <NotePanel />
     </div>
   )
 }

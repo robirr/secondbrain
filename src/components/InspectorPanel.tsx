@@ -10,9 +10,12 @@ const STATUS_LABEL: Record<Status, string> = { active: 'aktiv', inactive: 'inakt
 const STATUS_COLOR: Record<Status, string> = { active: '#57d07f', inactive: '#8798b5', warning: '#f6c344', archived: '#565d70' }
 
 export default function InspectorPanel() {
-  const { selected, setSelected, setHovered, nodes, edges } = useStore()
+  const { selected, setSelected, setHovered, setOpenNote, nodes, edges, rawNotes } = useStore()
   const node = nodes.find((n) => n.id === selected)
   if (!node) return null
+
+  const clusterFolder = node.meta?.Ordner
+  const clusterNotes = clusterFolder ? rawNotes.filter((r) => r.cluster === clusterFolder) : []
 
   const connections = edges
     .filter((e) => e.source === node.id || e.target === node.id)
@@ -50,6 +53,22 @@ export default function InspectorPanel() {
         {node.meta && Object.entries(node.meta).map(([k, v]) => (
           <Field key={k} label={k}><span className="text-[13px] text-ink">{v}</span></Field>
         ))}
+
+        {clusterNotes.length > 0 && (
+          <div>
+            <div className="eyebrow mb-2">Notizen · {clusterNotes.length}</div>
+            <div className="max-h-64 space-y-1 overflow-y-auto">
+              {clusterNotes.slice(0, 60).map((r) => (
+                <button key={r.id} onClick={() => setOpenNote(r.id)}
+                  className="flex w-full items-center gap-2 rounded-lg border border-line bg-white/[0.02] px-3 py-1.5 text-left text-[12px] text-muted transition-colors hover:bg-white/[0.05] hover:text-ink">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: node.color }} />
+                  <span className="truncate">{r.title || r.id.split('/').pop()}</span>
+                </button>
+              ))}
+              {clusterNotes.length > 60 && <div className="px-1 pt-1 text-[10px] text-faint">… und {clusterNotes.length - 60} weitere</div>}
+            </div>
+          </div>
+        )}
 
         <div>
           <div className="eyebrow mb-2">Verbindungen · {connNodes.length}</div>

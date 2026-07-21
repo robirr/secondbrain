@@ -27,7 +27,7 @@ export default function QmdSearch() {
   const [results, setResults] = useState<QmdResult[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { nodes, setSelected, setHovered } = useStore()
+  const { nodes, setSelected, setHovered, setOpenNote } = useStore()
 
   async function run() {
     const query = q.trim()
@@ -51,7 +51,8 @@ export default function QmdSearch() {
   }
 
   const openResult = (r: QmdResult) => {
-    const id = clusterIdFromFile(r.file)
+    setOpenNote(r.file) // Notiz im Lesepanel öffnen
+    const id = clusterIdFromFile(r.file) // zusätzlich Cluster im Graphen markieren
     if (id && nodes.some((n) => n.id === id)) setSelected(id)
   }
 
