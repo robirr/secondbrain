@@ -1,0 +1,38 @@
+# Verbindungs-Konfiguration der Quellen.
+# → Kopiere diese Datei nach  sources.config.yaml  und passe die Werte an.
+# WICHTIG: Tokens/Passwörter NICHT hier eintragen — nur den Namen der Umgebungsvariable
+#          (auth_env). Den eigentlichen Token setzt du als Umgebungsvariable.
+# sources.config.yaml gehört NICHT ins Versionsmanagement.
+
+sources:
+  memos:
+    type: memos
+    base_url: "http://<NAS-HOST>:5230"     # anpassen
+    auth_env: MEMOS_TOKEN
+    export: api                            # api | db | manual
+
+  trilium:
+    type: trilium
+    base_url: "http://<NAS-HOST>:8080"
+    auth_env: TRILIUM_ETAPI_TOKEN
+    export: etapi                          # etapi | manual
+
+  karakeep:
+    type: karakeep
+    base_url: "http://<NAS-HOST>:3000"
+    auth_env: KARAKEEP_TOKEN
+    export: api
+    include: notes_highlights              # all | notes_highlights  (zu klären)
+
+  hermes:
+    type: "TBD"                            # bitte präzisieren, welches Produkt
+    base_url: ""
+    auth_env: HERMES_TOKEN
+    export: manual
+
+  tududi:
+    type: tududi
+    base_url: "http://<NAS-HOST>:3002"
+    auth_env: TUDUDI_TOKEN
+    export: api
+    include: notes_only                    # all | notes_only  (Tasks ins Wissen?)

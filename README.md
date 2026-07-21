@@ -1,67 +1,53 @@
-# Second Brain — Ansicht
+# Second Brain
 
-Visuelle Überblick-Oberfläche für das Second-Brain-System: zentraler KI-Orchestrator, Systemkern,
-Wissenscluster, Projekte und externe Systeme in mehreren Ansichten (Architektur/Ring, Ebenen,
-Globus, Cloud, Graph). Dark-Mode, Glassmorphism, Suche, Filter, Detail-Inspector.
+Ein lokales, modell-neutrales Wissenssystem: Notizen als Markdown (einzige Wahrheit), lokale
+Bedeutungssuche (qmd), eine KI-gepflegte Wiki-Schicht (markiert Widersprüche statt sie zu
+überschreiben) und eine Visualisierungs-App. Läuft komplett auf eigener Hardware (z. B. NAS).
 
-> Nutzt aktuell **Demo-Daten** (`src/data/demo.ts`). Nächster Schritt: an reale Daten
-> (`graph.json` / Vault) koppeln.
+> **Vollständige Nachbau-Anleitung: [`docs/SETUP.md`](docs/SETUP.md).**
+> Modell-neutrale Agenten-Regeln: [`AGENTS.md`](AGENTS.md) (bzw. `CLAUDE.md` für Claude Code).
 
-**Stack:** React 19 · TypeScript · Vite · Tailwind v4 · Zustand · lucide-react · Three.js / R3F (Globus).
+## Repo-Struktur
+| Ort | Inhalt |
+|-----|--------|
+| Wurzel (`src/`, `package.json`, `Dockerfile`, `docker-compose.yml`, `nginx.conf.template`) | **Visualisierungs-App** (React + TS + Tailwind + Three.js) |
+| `system/scripts/` | **Pipeline** ohne Geheimnisse: Indexer (`build-index.mjs`), Konnektoren (`pull-*.mjs`, `pull_trilium.py`), Abgleich (`sync.mjs`), Capture (`capture*.mjs`) |
+| `system/*.example` | Konfig-Vorlagen (Hosts/Tokens werden lokal gesetzt, nie committet) |
+| `docs/SPEZIFIKATION.md` | der „Vertrag" (Ziel, Fähigkeiten, Architektur) |
+| `docs/WIKI-SCHEMA.md` | Regeln der KI-gepflegten Wiki-Schicht |
+| `docs/SETUP.md` | Schritt-für-Schritt-Nachbau |
+| `AGENTS.md` / `CLAUDE.md` | Brain-First-Regelwerk (modell-neutral bzw. für Claude Code) |
 
-## Entwicklung
+**Nicht im Repo:** Notizen, Tokens (`.env`), maschinenspezifische Konfig. Host-IPs sind als `<NAS-IP>` anonymisiert.
+
+## Die App
+
+Ansichten: Architektur/Ring, Ebenen, Globus (WebGL), Cloud, Graph — dieselbe Datenquelle, nur andere
+Darstellung. qmd-Bedeutungssuche oben, Detail-Inspector, Cluster-Drilldown bis zur Notiz, Notiz-Lesepanel,
+Presets, Screenshot-Export. Dark-Mode/Glassmorphism.
+
+### Entwicklung
 ```bash
 npm install
-npm run dev        # http://localhost:5173
+npm run dev          # http://localhost:5173  (Dev-Proxy /qmd -> localhost:8181)
 ```
 
-## Deployment via Docker (z. B. auf dem NAS)
-```bash
-# im Projektordner
-docker compose up -d --build
-# danach erreichbar unter  http://<NAS-IP>:8686
-```
-Das Image baut die App (Vite) und liefert sie statisch über nginx aus (SPA-Fallback).
-Port anpassen in `docker-compose.yml` (Standard `8686:80`).
-
-Ohne Compose:
-```bash
-docker build -t second-brain-app .
-docker run -d --restart unless-stopped -p 8686:80 --name second-brain-app second-brain-app
-```
-
-## Produktive Daten einbinden (NAS)
-Die produktiven Daten liegen auf dem NAS und werden read-only in den Container gemountet.
+### Deployment via Docker (z. B. Unraid)
 ```bash
 cp .env.example .env
-# in .env den Pfad setzen, z.B.:
-# SECOND_BRAIN_DATA=/mnt/user/appdata/secondbrain/data
-docker compose up -d --build
+#  SECOND_BRAIN_DATA -> Vault-WURZEL (graph.json + .md-Dateien)  -> Ansichten & Lesepanel
+#  QMD_URL           -> qmd-HTTP-Dienst (z.B. http://<NAS-IP>:8181)  -> Bedeutungssuche
+docker compose up -d --build     # -> http://<HOST>:8686
 ```
-`SECOND_BRAIN_DATA` auf die **Vault-Wurzel** zeigen lassen — sie enthält `graph.json` (für die
-Ansichten) **und** die `.md`-Dateien (für das Notiz-Lesepanel). Der Ordner wird unter `/data`
-bereitgestellt. Ohne Mount → Demo-Daten.
+Multi-Stage-Build: Vite baut die App, nginx liefert sie statisch aus (SPA-Fallback), proxyt `/qmd` und
+liefert die gemounteten Daten unter `/data`. Ohne Daten/qmd läuft die App mit Demo-Daten weiter.
 
-- Ansichten: laden `data/graph.json`, aggregiert nach Cluster.
-- Notiz-Lesepanel: lädt `data/<cluster>/<datei>.md` (Klick auf qmd-Treffer oder Notiz im Inspector).
+### Daten & Suche
+- Ansichten laden `data/graph.json`, aggregiert nach Cluster; Drilldown zeigt einzelne Notizen.
+- Lesepanel lädt `data/<cluster>/<datei>.md`.
+- Suche ruft `/qmd/query` (nginx/Vite-Proxy → qmd-HTTP-Dienst).
 
-## qmd-Bedeutungssuche (Suchfeld oben links)
-Das Suchfeld oben links in der Sidebar nutzt **qmd** (lokale Hybridsuche über die echten Notizen).
-Die App ruft gleich-Origin `/qmd/query` auf; nginx (prod) bzw. Vite (dev) proxen das an den
-qmd-HTTP-Dienst.
-
-**qmd-Dienst auf dem NAS starten:**
-```bash
-qmd mcp --http --daemon        # Port 8181; qmd muss die Vault-Collection kennen (qmd collection add …)
-```
-Adresse in `.env` setzen (Standard `host.docker.internal:8181`, alternativ NAS-IP):
-```
-QMD_URL=http://192.168.1.20:8181
-```
-Läuft kein qmd-Dienst, zeigt das Feld „qmd nicht erreichbar" — die App bleibt sonst voll funktionsfähig.
-
-## Struktur
-- `src/components/` — Sidebar, Topbar, Search, ViewSwitcher, RingView, CloudView, LayerView,
-  GraphView, GlobeView, InspectorPanel, ViewSettingsPanel, RightPanel, Starfield
-- `src/data/` — `demo.ts` (Knoten/Kanten), `clusters.ts` (Farben)
-- `src/store.ts` — Zustand (Auswahl, Hover, Ansicht-Einstellungen, Filter)
+## Modell-Unabhängigkeit
+Daten, Indexer, qmd und App hängen an **keinem** bestimmten LLM. Das antwortende/​pflegende Modell ist
+frei (Claude, anderes Cloud-LLM oder lokal via Ollama) — Zugriff auf Vault + qmd + `AGENTS.md` genügt.
+qmd bietet HTTP **und** MCP, nutzbar von jedem MCP-Client. Details in [`docs/SETUP.md`](docs/SETUP.md).
