@@ -15,13 +15,18 @@ RUN npx vite build
 
 # --- Laufzeit: nginx (Auslieferung + Proxy) + qmd (Suche) ---
 FROM node:22-bookworm-slim
+# nginx + envsubst + Compiler-Toolchain für qmds native Module
+# (node-llama-cpp, better-sqlite3, tree-sitter brauchen python3/make/g++/cmake/git)
 RUN apt-get update \
- && apt-get install -y --no-install-recommends nginx gettext-base wget ca-certificates \
+ && apt-get install -y --no-install-recommends \
+      nginx gettext-base wget ca-certificates \
+      python3 make g++ cmake git \
  && rm -rf /var/lib/apt/lists/* \
  && rm -f /etc/nginx/sites-enabled/default
 
-# qmd global (feste Version) — lädt seine Modelle erst beim ersten Start
-RUN npm i -g @tobilu/qmd@2.5.3
+# qmd global (feste Version) — lädt seine Modelle erst beim ersten Start.
+# --foreground-scripts zeigt native Build-Ausgaben direkt im CI-Log.
+RUN npm i -g --foreground-scripts @tobilu/qmd@2.5.3
 
 # App-Build in den nginx-Ausgabeordner; der Vault wird zur Laufzeit unter data/ gemountet
 COPY --from=build /app/dist /usr/share/nginx/html
