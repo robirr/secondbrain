@@ -32,20 +32,24 @@ npm install
 npm run dev          # http://localhost:5173  (Dev-Proxy /qmd -> localhost:8181)
 ```
 
-### Deployment via Docker (z. B. Unraid)
+### Deployment via Docker (z. B. Unraid) — alles in EINEM Container
 ```bash
 cp .env.example .env
-#  SECOND_BRAIN_DATA -> Vault-WURZEL (graph.json + .md-Dateien)  -> Ansichten & Lesepanel
-#  QMD_URL           -> qmd-HTTP-Dienst (z.B. http://<NAS-IP>:8181)  -> Bedeutungssuche
+#  SECOND_BRAIN_DATA -> Vault-WURZEL (graph.json + .md-Dateien)   — EINZIGE Pflichtangabe
 docker compose up -d --build     # -> http://<HOST>:8686
 ```
-Multi-Stage-Build: Vite baut die App, nginx liefert sie statisch aus (SPA-Fallback), proxyt `/qmd` und
-liefert die gemounteten Daten unter `/data`. Ohne Daten/qmd läuft die App mit Demo-Daten weiter.
+**Ein Image, ein Container.** Die App (nginx) **und** die qmd-Bedeutungssuche laufen zusammen im
+selben Container — kein separater qmd-Dienst, kein `host.docker.internal`. qmd wird beim ersten Start
+automatisch eingerichtet: es indexiert den gemounteten Vault und lädt einmalig seine lokalen Modelle
+(~2–3 GB). Diese Modelle **und** der Suchindex liegen im Docker-Volume `qmd-home` und überleben
+Neustarts. **Erster Start dauert daher länger; die UI ist aber sofort da**, die Suche schaltet sich
+zu, sobald qmd fertig ist. Ohne gemounteten Vault läuft die App mit Demo-Daten.
 
 ### Daten & Suche
 - Ansichten laden `data/graph.json`, aggregiert nach Cluster; Drilldown zeigt einzelne Notizen.
 - Lesepanel lädt `data/<cluster>/<datei>.md`.
-- Suche ruft `/qmd/query` (nginx/Vite-Proxy → qmd-HTTP-Dienst).
+- Suche ruft `/qmd/query` → nginx proxyt intern auf das mitlaufende qmd (`127.0.0.1:8181`).
+- Externe Agenten erreichen qmd über denselben Container: MCP unter `http://<HOST>:8686/qmd/mcp`.
 
 ## Modell-Unabhängigkeit
 Daten, Indexer, qmd und App hängen an **keinem** bestimmten LLM. Das antwortende/​pflegende Modell ist

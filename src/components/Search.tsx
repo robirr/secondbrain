@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Search as SearchIcon, Loader2, Sparkles } from 'lucide-react'
+import { Search as SearchIcon, Loader2, Sparkles, CornerDownLeft } from 'lucide-react'
 import { useStore } from '../store'
 
 interface QmdResult { docid: string; file: string; title: string; score: number; snippet: string }
@@ -21,28 +21,52 @@ function clusterIdFromFile(file: string): string | null {
   return seg ? `cl:${seg}` : null
 }
 
+// Suchbegriffe im Text hervorheben (nutzt eigenständige Wörter ab 2 Zeichen)
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+function highlight(text: string, query: string) {
+  const terms = query.trim().split(/\s+/).filter((t) => t.length >= 2).map(escapeRegExp)
+  if (terms.length === 0) return text
+  const re = new RegExp(`(${terms.join('|')})`, 'gi')
+  const parts = text.split(re)
+  return parts.map((part, i) =>
+    re.test(part)
+      ? <mark key={i} className="rounded bg-c-wissen/25 px-0.5 text-ink">{part}</mark>
+      : part,
+  )
+}
+
 export default function Search() {
   const [q, setQ] = useState('')
   const [results, setResults] = useState<QmdResult[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
+  const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const { nodes, setSelected, setHovered, setOpenNote } = useStore()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); inputRef.current?.focus() }
-      if (e.key === 'Escape') { setOpen(false); inputRef.current?.blur() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  // aktiven Treffer in den sichtbaren Bereich scrollen
+  useEffect(() => {
+    if (!open || !results?.length) return
+    const el = listRef.current?.querySelector<HTMLElement>(`[data-idx="${active}"]`)
+    el?.scrollIntoView({ block: 'nearest' })
+  }, [active, open, results])
+
   async function run() {
     const query = q.trim()
     if (!query) { setResults(null); return }
-    setLoading(true); setError(null); setOpen(true)
+    setLoading(true); setError(null); setOpen(true); setActive(0)
     try {
       const res = await fetch('/qmd/query', {
         method: 'POST',
@@ -67,44 +91,79 @@ export default function Search() {
     setOpen(false)
   }
 
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Escape') { setOpen(false); inputRef.current?.blur(); return }
+    if (e.key === 'Enter') {
+      if (open && results && results.length > 0) { e.preventDefault(); choose(results[active]) }
+      else run()
+      return
+    }
+    if (!open || !results?.length) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => (i + 1) % results.length) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => (i - 1 + results.length) % results.length) }
+    else if (e.key === 'Home') { e.preventDefault(); setActive(0) }
+    else if (e.key === 'End') { e.preventDefault(); setActive(results.length - 1) }
+  }
+
+  const showDropdown = open && (loading || error || results)
+
   return (
     <div className="relative mx-auto w-full max-w-xl">
       <label className="glass flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-muted transition-colors focus-within:border-[rgba(139,124,246,0.4)]">
         {loading ? <Loader2 size={15} className="animate-spin text-c-wissen" /> : <SearchIcon size={15} className="text-faint" />}
         <input
           ref={inputRef} value={q}
-          onChange={(e) => { setQ(e.target.value); if (!e.target.value.trim()) { setResults(null); setError(null) } }}
+          role="combobox" aria-expanded={!!showDropdown} aria-controls="qmd-results"
+          aria-activedescendant={open && results?.length ? `qmd-r-${active}` : undefined}
+          onChange={(e) => { setQ(e.target.value); if (!e.target.value.trim()) { setResults(null); setError(null); setOpen(false) } }}
           onFocus={() => { if (results || error) setOpen(true) }}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          onKeyDown={(e) => { if (e.key === 'Enter') run() }}
+          onKeyDown={onKeyDown}
           className="w-full bg-transparent text-[13.5px] text-ink placeholder:text-faint focus:outline-none"
           placeholder="Bedeutungssuche in deinem Wissen …" />
         <span className="hidden items-center gap-1 text-[10px] text-faint sm:flex"><Sparkles size={11} /> qmd</span>
         <kbd className="rounded-md border border-line px-1.5 py-0.5 font-mono text-[10px] text-faint">⌘K</kbd>
       </label>
 
-      {open && error && (
-        <div className="glass absolute left-0 right-0 top-full z-30 mt-2 rounded-xl px-4 py-3 text-[12px] text-faint">
-          {error} — läuft der qmd-HTTP-Dienst?
-        </div>
-      )}
+      {showDropdown && (
+        <div id="qmd-results" ref={listRef} role="listbox"
+          className="glass fade-up absolute left-0 right-0 top-full z-30 mt-2 max-h-[26rem] overflow-y-auto rounded-xl p-1.5">
+          {loading && (
+            <div className="flex items-center gap-2 px-3 py-2 text-[12px] text-faint">
+              <Loader2 size={13} className="animate-spin text-c-wissen" /> Suche läuft …
+            </div>
+          )}
 
-      {open && results && (
-        <div className="glass fade-up absolute left-0 right-0 top-full z-30 mt-2 max-h-[26rem] overflow-y-auto rounded-xl p-1.5">
-          {results.length === 0 && <div className="px-3 py-2 text-[12px] text-faint">Keine Treffer.</div>}
-          {results.map((r) => (
-            <button key={r.docid}
-              onMouseEnter={() => { const id = clusterIdFromFile(r.file); if (id) setHovered(id) }}
+          {!loading && error && (
+            <div className="px-3 py-2 text-[12px] text-faint">{error} — läuft der qmd-HTTP-Dienst?</div>
+          )}
+
+          {!loading && !error && results && results.length === 0 && (
+            <div className="px-3 py-2 text-[12px] text-faint">Keine Treffer für „{q.trim()}".</div>
+          )}
+
+          {!loading && !error && results && results.map((r, i) => (
+            <button key={r.docid} id={`qmd-r-${i}`} data-idx={i} role="option" aria-selected={i === active}
+              onMouseEnter={() => { setActive(i); const id = clusterIdFromFile(r.file); if (id) setHovered(id) }}
               onMouseLeave={() => setHovered(null)}
               onMouseDown={(e) => { e.preventDefault(); choose(r) }}
-              className="w-full rounded-lg px-3 py-2 text-left transition-colors hover:bg-white/[0.06]">
+              className={`w-full rounded-lg px-3 py-2 text-left transition-colors ${i === active ? 'bg-white/[0.08]' : 'hover:bg-white/[0.06]'}`}>
               <div className="flex items-center gap-2">
-                <span className="truncate text-[13px] font-medium text-ink">{r.title || r.file}</span>
+                <span className="truncate text-[13px] font-medium text-ink">{highlight(r.title || r.file, q)}</span>
                 <span className="ml-auto shrink-0 font-mono text-[10px] text-c-wissen">{Math.round(r.score * 100)}%</span>
               </div>
-              <div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-faint">{cleanSnippet(r.snippet)}</div>
+              <div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-faint">{highlight(cleanSnippet(r.snippet), q)}</div>
             </button>
           ))}
+
+          {!loading && !error && results && results.length > 0 && (
+            <div className="mt-1 flex items-center gap-3 border-t border-line px-3 pt-1.5 text-[10px] text-faint">
+              <span className="flex items-center gap-1"><kbd className="font-mono">↑↓</kbd> navigieren</span>
+              <span className="flex items-center gap-1"><CornerDownLeft size={10} /> öffnen</span>
+              <span className="flex items-center gap-1"><kbd className="font-mono">esc</kbd> schließen</span>
+              <span className="ml-auto">{results.length} Treffer</span>
+            </div>
+          )}
         </div>
       )}
     </div>

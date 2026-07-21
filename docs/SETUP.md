@@ -54,13 +54,17 @@ node system/scripts/capture-server.mjs   # HTTP-Capture (Push-Kanal, z.B. für A
 Hinweise: In `system/scripts/lib.mjs` die `<NAS-IP>` durch echte Hosts ersetzen; in `sync.mjs` `QMD_JS`
 auf deinen qmd-Pfad setzen (oder qmd auf PATH).
 
-**7) App deployen** (Docker/Unraid)
+**7) App deployen** (Docker/Unraid) — **alles in einem Container**
 ```bash
 cp .env.example .env
-#  SECOND_BRAIN_DATA -> Vault-WURZEL (enthält graph.json + die .md-Dateien)
-#  QMD_URL          -> qmd-HTTP-Dienst (z.B. http://<NAS-IP>:8181)
+#  SECOND_BRAIN_DATA -> Vault-WURZEL (graph.json + .md-Dateien)   — EINZIGE Pflichtangabe
 docker compose up -d --build             # -> http://<HOST>:8686
 ```
+Das Image enthält App **und** qmd. Beim ersten Start richtet der Container qmd selbst ein
+(Sammlung `brain` auf dem gemounteten Vault, Modell-Download ~2–3 GB, Embeddings) — das dauert
+einmalig. Modelle + Index liegen im Volume `qmd-home` und bleiben erhalten. Schritt 3 (qmd auf dem
+Host) ist damit für den Betrieb **nicht** nötig — nur praktisch für lokale Entwicklung mit `npm run dev`.
+Externe Agenten sprechen qmd über den Container an: MCP unter `http://<HOST>:8686/qmd/mcp`.
 
 ## Modell-Unabhängigkeit
 - **Daten, Indexer, qmd, App** hängen nicht an einem bestimmten LLM.

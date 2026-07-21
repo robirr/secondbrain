@@ -1,28 +1,29 @@
-# Second Brain — Ansicht · Docker Compose (für Unraid)
+# Second Brain — ALLES IN EINEM CONTAINER (App + qmd-Suche)
 # Start:  docker compose up -d --build
 # Web-UI: http://<UNRAID-IP>:8686
 #
-# Produktive Daten: Pfad in .env setzen (SECOND_BRAIN_DATA) — siehe .env.example.
+# Nur EINE Pflichtangabe: der Pfad zu deinen Notizen (SECOND_BRAIN_DATA) in .env.
+# qmd (Bedeutungssuche) läuft mit im Container — kein zweiter Dienst nötig.
 services:
-  second-brain-app:
+  second-brain:
     build: .
-    image: second-brain-app:latest
-    container_name: second-brain-app
+    image: second-brain:latest
+    container_name: second-brain
     ports:
       - "8686:80"          # Host-Port 8686 (frei wählbar) -> Container-Port 80
     environment:
       - TZ=Europe/Zurich
-      # qmd-HTTP-Dienst (Bedeutungssuche). Läuft auf dem NAS: `qmd mcp --http --daemon` (Port 8181).
-      # host.docker.internal zeigt via extra_hosts auf den NAS-Host. Alternativ NAS-IP eintragen.
-      - QMD_URL=${QMD_URL:-http://host.docker.internal:8181}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     volumes:
-      # Produktive Daten vom NAS (read-only). Die App lädt sie zur Laufzeit unter /data
-      # (erwartet z.B. graph.json). Ist der Pfad nicht gesetzt, wird ./data verwendet.
+      # (1) Deine Notizen (Vault-WURZEL: graph.json + .md). Read-only — wird nur gelesen.
       - ${SECOND_BRAIN_DATA:-./data}:/usr/share/nginx/html/data:ro
+      # (2) qmd-Zuhause: lokale Modelle + Suchindex. Bleibt über Neustarts erhalten,
+      #     damit die ~2-3 GB Modelle nicht jedes Mal neu geladen werden.
+      - qmd-home:/qmd-home
     restart: unless-stopped
     labels:
       # Unraid: WebUI-Link + Icon in der Docker-Übersicht
       - "net.unraid.docker.webui=http://[IP]:[PORT:8686]/"
       - "net.unraid.docker.icon=https://raw.githubusercontent.com/robirr/secondbrain/main/public/favicon.svg"
+
+volumes:
+  qmd-home:
