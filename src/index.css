@@ -66,6 +66,12 @@ body {
 @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .fade-up { animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
+/* Cloud-Ansicht: sanftes Schweben der Wolken + Funkeln der Notiz-Sterne */
+@keyframes cloudFloat { 0%,100% { transform: translate(0,0); } 50% { transform: translate(0,-12px); } }
+.cloud-float { animation: cloudFloat ease-in-out infinite; will-change: transform; }
+@keyframes twinkle { 0%,100% { opacity: 0.35; } 50% { opacity: 0.95; } }
+.twinkle { animation: twinkle ease-in-out infinite; }
+
 /* Markdown-Lesepanel */
 .md { color: var(--color-ink); font-size: 14px; line-height: 1.7; }
 .md > :first-child { margin-top: 0; }
