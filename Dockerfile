@@ -8,7 +8,10 @@
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+# npm install (nicht ci): holt plattformgerecht das Linux-Binary von rolldown/vite.
+# `npm ci` scheitert hier, weil der Lockfile unter Windows erzeugt wurde und das
+# Linux-native-Binary (@rolldown/binding-linux-x64-gnu) nicht strikt auflöst.
+RUN npm install --no-audit --no-fund
 COPY . .
 # vite build (ohne tsc-Gate für robustes Container-Build)
 RUN npx vite build
