@@ -31,57 +31,19 @@ function highlight(text: string, query: string) {
     re.test(part) ? <mark key={i} className="rounded bg-c-wissen/25 px-0.5 text-ink">{part}</mark> : part)
 }
 
-// ---- qmd über das MCP-Protokoll (POST /qmd/mcp) -----------------------------
-// qmd bietet HTTP nur als MCP-Server an (kein /query). Ablauf: initialize ->
-// notifications/initialized -> tools/call "query". Session-ID wird zwischengespeichert.
-const MCP = '/qmd/mcp'
-const MCP_HEADERS = { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' }
-let sessionId: string | null = null
-
-async function parseMcp(res: Response): Promise<unknown> {
-  const text = await res.text()
-  if ((res.headers.get('Content-Type') || '').includes('text/event-stream')) {
-    const line = text.split('\n').filter((l) => l.startsWith('data:')).pop()
-    return line ? JSON.parse(line.slice(5).trim()) : null
-  }
-  return text ? JSON.parse(text) : null
-}
-
-async function ensureSession(): Promise<void> {
-  if (sessionId) return
-  const res = await fetch(MCP, {
-    method: 'POST', headers: MCP_HEADERS,
-    body: JSON.stringify({
-      jsonrpc: '2.0', id: 0, method: 'initialize',
-      params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'second-brain-app', version: '1.0' } },
-    }),
-  })
-  if (!res.ok) throw new Error('init HTTP ' + res.status)
-  const sid = res.headers.get('Mcp-Session-Id') || res.headers.get('mcp-session-id')
-  if (!sid) throw new Error('keine Session-ID')
-  sessionId = sid
-  // Handshake abschließen (Notification, ohne Antwortauswertung)
-  await fetch(MCP, {
-    method: 'POST', headers: { ...MCP_HEADERS, 'Mcp-Session-Id': sessionId },
-    body: JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }),
-  })
-}
-
+// ---- qmd-Bedeutungssuche (REST: POST /qmd/query) ----------------------------
+// qmd stellt neben /mcp auch einen einfachen /query-Endpunkt bereit:
+//   Body  {searches:[{type,query}], limit, rerank}  ->  {results:[{docid,file,title,score,snippet}]}
+// rerank:false = schneller auf CPU-NAS (kein zusätzliches Reranker-Modell nötig).
 async function qmdQuery(query: string): Promise<QmdResult[]> {
-  const call = {
-    jsonrpc: '2.0', id: 1, method: 'tools/call',
-    params: { name: 'query', arguments: { searches: [{ type: 'lex', query }, { type: 'vec', query }], limit: 10, rerank: false } },
-  }
-  const send = async () => {
-    await ensureSession()
-    return fetch(MCP, { method: 'POST', headers: { ...MCP_HEADERS, 'Mcp-Session-Id': sessionId as string }, body: JSON.stringify(call) })
-  }
-  let res = await send()
-  if (res.status === 404) { sessionId = null; res = await send() } // Session abgelaufen → neu
+  const res = await fetch('/qmd/query', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ searches: [{ type: 'lex', query }, { type: 'vec', query }], limit: 10, rerank: false }),
+  })
   if (!res.ok) throw new Error('HTTP ' + res.status)
-  const data = (await parseMcp(res)) as { result?: { structuredContent?: { results?: QmdResult[] } } } | null
-  const results = data?.result?.structuredContent?.results
-  return Array.isArray(results) ? results : []
+  const data = (await res.json()) as { results?: QmdResult[] }
+  return Array.isArray(data.results) ? data.results : []
 }
 // ---------------------------------------------------------------------------
 

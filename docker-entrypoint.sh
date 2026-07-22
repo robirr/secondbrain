@@ -9,6 +9,11 @@ QMD_PORT=8181
 VAULT="${VAULT:-/usr/share/nginx/html/data}"
 export QMD_URL="${QMD_URL:-http://127.0.0.1:${QMD_PORT}}"
 
+# qmd bindet seinen HTTP-Dienst an "localhost". Ohne diese Zeile löst Node das in
+# manchen Containern zu IPv6 (::1) auf — dann kommt nginx (127.0.0.1) nicht dran und
+# die Suche schlägt fehl. IPv4-first erzwingen -> qmd lauscht auf 127.0.0.1.
+export NODE_OPTIONS="--dns-result-order=ipv4first${NODE_OPTIONS:+ $NODE_OPTIONS}"
+
 # 1) nginx-Konfiguration aus Vorlage erzeugen (interner qmd-Proxy)
 mkdir -p /etc/nginx/conf.d
 envsubst '${QMD_URL}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
