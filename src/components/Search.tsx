@@ -54,6 +54,7 @@ export default function Search() {
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
+  const [queried, setQueried] = useState('') // Text, zu dem die aktuellen Treffer gehören
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const { nodes, setSelected, setHovered, setOpenNote } = useStore()
@@ -76,7 +77,7 @@ export default function Search() {
     if (!query) { setResults(null); return }
     setLoading(true); setError(null); setOpen(true); setActive(0)
     try {
-      setResults(await qmdQuery(query))
+      setResults(await qmdQuery(query)); setQueried(query)
     } catch {
       setError('qmd nicht erreichbar')
       setResults(null)
@@ -95,7 +96,9 @@ export default function Search() {
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Escape') { setOpen(false); inputRef.current?.blur(); return }
     if (e.key === 'Enter') {
-      if (open && results && results.length > 0) { e.preventDefault(); choose(results[active]) }
+      e.preventDefault()
+      // Treffer nur öffnen, wenn sie zum aktuellen Text gehören — sonst neue Suche
+      if (open && results && results.length > 0 && q.trim() === queried) choose(results[active])
       else run()
       return
     }
@@ -116,7 +119,11 @@ export default function Search() {
           ref={inputRef} value={q}
           role="combobox" aria-expanded={!!showDropdown} aria-controls="qmd-results"
           aria-activedescendant={open && results?.length ? `qmd-r-${active}` : undefined}
-          onChange={(e) => { setQ(e.target.value); if (!e.target.value.trim()) { setResults(null); setError(null); setOpen(false) } }}
+          onChange={(e) => {
+            const v = e.target.value; setQ(v)
+            if (!v.trim()) { setResults(null); setError(null); setOpen(false) }
+            else if (v.trim() !== queried) { setResults(null); setError(null) } // veraltete Treffer verwerfen
+          }}
           onFocus={() => { if (results || error) setOpen(true) }}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           onKeyDown={onKeyDown}
