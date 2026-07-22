@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Startet qmd (im Hintergrund) UND nginx (im Vordergrund) in EINEM Container.
-# Die UI ist sofort erreichbar; die Suche wird aktiv, sobald qmd bereit ist.
+# Der qmd-Dienst startet SOFORT (lexikalische Suche gleich verfügbar); die
+# Embeddings werden PARALLEL im Hintergrund erzeugt (Bedeutungssuche kommt dazu,
+# sobald sie fertig sind). Nichts blockiert die UI oder den Neustart.
 set -u
 
 QMD_PORT=8181
@@ -13,8 +15,7 @@ envsubst '${QMD_URL}' < /etc/nginx/templates/default.conf.template > /etc/nginx/
 
 # 2) qmd im Hintergrund vorbereiten & starten — blockiert die UI nicht
 (
-  mkdir -p "$HOME"
-  cd "$HOME" || exit 0   # relative Index-DB landet dann im persistenten Volume
+  cd "$HOME" 2>/dev/null || true   # relative Index-DB landet dann im persistenten Volume
 
   if [ -d "$VAULT" ]; then
     if ! qmd collection list 2>/dev/null | grep -qw brain; then
@@ -24,14 +25,22 @@ envsubst '${QMD_URL}' < /etc/nginx/templates/default.conf.template > /etc/nginx/
     fi
     echo "[qmd] Index aktualisieren ..."
     qmd update || true
-    echo "[qmd] Embeddings erzeugen (erster Start laedt lokale Modelle, ~2-3 GB, dauert) ..."
-    qmd embed || true
   else
     echo "[qmd] Kein Vault unter $VAULT gemountet — Suche bleibt inaktiv, App laeuft weiter."
   fi
 
-  echo "[qmd] MCP-HTTP-Dienst auf :$QMD_PORT starten ..."
-  exec qmd mcp --http --port "$QMD_PORT"
+  echo "[qmd] MCP-HTTP-Dienst auf :$QMD_PORT starten (Suche sofort verfuegbar) ..."
+  qmd mcp --http --port "$QMD_PORT" &
+  MCP_PID=$!
+
+  # Embeddings PARALLEL nachziehen — Bedeutungssuche danach verfuegbar.
+  # Erststart laedt einmalig das lokale Modell (~350 MB) und kann dauern;
+  # laeuft aber im Hintergrund, waehrend der Dienst schon lexikalisch antwortet.
+  if [ -d "$VAULT" ]; then
+    ( echo "[qmd] Embeddings im Hintergrund erzeugen ..."; qmd embed && echo "[qmd] Embeddings fertig." || echo "[qmd] embed uebersprungen/fehlgeschlagen." ) &
+  fi
+
+  wait "$MCP_PID"
 ) &
 
 # 3) nginx im Vordergrund = Hauptprozess des Containers
