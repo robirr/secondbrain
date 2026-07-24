@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronRight, Home, FolderOpen } from 'lucide-react'
+import { ChevronRight, Home } from 'lucide-react'
 import { getIcon } from '../icons'
 import { useStore } from '../store'
 import { useClouds, useTreeLevel, type ClusterCloud } from '../data/cloud'
@@ -34,14 +34,14 @@ function Nebula({ color, r }: { color: string; r: number }) {
   )
 }
 
-// Kleiner Zentral-Hub (Icon verkleinert).
+// Kleiner Zentral-Hub (Symbol ~50% kleiner).
 function Hub({ icon, color, active, onClick, title }: { icon: string; color: string; active: boolean; onClick?: (e: React.MouseEvent) => void; title?: string }) {
   const Icon = getIcon(icon)
   return (
     <button onClick={onClick} title={title}
       className="glass absolute left-1/2 top-1/2 z-20 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-xl transition-all"
       style={{ borderColor: active ? color : undefined, boxShadow: active ? `0 0 24px -4px ${color}` : undefined }}>
-      <Icon size={16} color={color} strokeWidth={1.7} />
+      <Icon size={9} color={color} strokeWidth={1.8} />
     </button>
   )
 }
@@ -93,59 +93,67 @@ function FocusLevel({ c, path, onDrill, settings }: {
 }) {
   const { setOpenNote } = useStore()
   const { folders, notes } = useTreeLevel(path)
-  const Rf = 108 + folders.length * 4
+  const Rf = 128 + folders.length * 5
   const hasFolders = folders.length > 0
+  // Notiz-Titel dauerhaft zeigen, solange es nicht zu viele sind (wie im Zielbild) — sonst nur beim Hover.
+  const showNoteLabels = notes.length <= 22
 
   return (
     <>
-      <Nebula color={c.color} r={Math.max(Rf + 60, 180)} />
+      <Nebula color={c.color} r={Math.max(Rf + 70, 200)} />
 
-      {/* Verbindungslinien zu Unterordnern */}
+      {/* Verbindungslinien vom Zentrum zu den Unterthemen */}
       {folders.map((_, k) => {
         const a = (k / folders.length) * Math.PI * 2 - Math.PI / 2
         const dx = Math.cos(a) * Rf, dy = Math.sin(a) * Rf
         const len = Math.hypot(dx, dy), ang = (Math.atan2(dy, dx) * 180) / Math.PI
         return <div key={`l${k}`} className="pointer-events-none absolute left-1/2 top-1/2 origin-left"
-          style={{ width: len, height: 1, transform: `rotate(${ang}deg)`, background: `linear-gradient(90deg, ${c.color}77, transparent)` }} />
+          style={{ width: len, height: 1, transform: `rotate(${ang}deg)`, background: `linear-gradient(90deg, ${c.color}00 0%, ${c.color}66 30%, ${c.color}22 100%)` }} />
       })}
 
-      {/* Unterordner als Sub-Hubs (drill tiefer) */}
+      {/* Unterthemen als beschriftete Pillen (Klick = eine Ebene tiefer) */}
       {folders.map((f, k) => {
         const a = (k / folders.length) * Math.PI * 2 - Math.PI / 2
         const dx = Math.cos(a) * Rf, dy = Math.sin(a) * Rf
         return (
           <button key={f.name} onClick={(e) => { e.stopPropagation(); onDrill(f.path) }}
-            className="group absolute left-1/2 top-1/2 z-20 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
+            className="group absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2"
             style={{ transform: `translate(${dx}px, ${dy}px)` }} title={`${f.name} öffnen`}>
-            <span className="glass grid h-9 w-9 place-items-center rounded-lg transition-all group-hover:scale-110" style={{ boxShadow: `0 0 14px -6px ${c.color}` }}>
-              <FolderOpen size={14} color={c.color} strokeWidth={1.7} />
+            <span className="glass block rounded-2xl px-3 py-1.5 text-center transition-all group-hover:scale-105"
+              style={{ boxShadow: `0 0 20px -9px ${c.color}` }}>
+              <span className="block max-w-[150px] truncate text-[12px] font-semibold text-ink">{f.name}</span>
+              <span className="mt-0.5 block font-mono text-[9px] text-faint">{f.count} Notizen</span>
             </span>
-            <span className="max-w-[130px] truncate text-[11px] font-medium text-ink">{f.name}</span>
-            <span className="font-mono text-[9px] text-faint">{f.count}</span>
           </button>
         )
       })}
 
-      {/* Notizen dieser Ebene als anklickbare Sterne */}
+      {/* Notizen dieser Ebene als anklickbare Sterne (mit Titel) */}
       {notes.map((note, k) => {
         const { x, y } = hasFolders
-          ? bandPos(k, notes.length, Rf * 1.35, Rf * 1.35 + 46 + notes.length * 2)
-          : bandPos(k, notes.length, 34, 40 + notes.length * 3)
+          ? bandPos(k, notes.length, Rf * 1.4, Rf * 1.4 + 50 + notes.length * 2)
+          : bandPos(k, notes.length, 40, 46 + notes.length * 3)
         return (
           <button key={note.id} onClick={(e) => { e.stopPropagation(); setOpenNote(note.id) }}
-            className="group absolute z-10 -translate-x-1/2 -translate-y-1/2"
+            className="group absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
             style={{ left: `calc(50% + ${x}px)`, top: `calc(50% + ${y}px)` }} title={note.title}>
             <span className="block rounded-full transition-transform group-hover:scale-[1.8]" style={{ width: 6, height: 6, background: c.color, boxShadow: `0 0 9px ${c.color}` }} />
-            <span className="pointer-events-none absolute left-1/2 top-full z-30 mt-1 -translate-x-1/2 max-w-[200px] truncate whitespace-nowrap rounded-md border border-line bg-black/85 px-1.5 py-0.5 text-[10px] text-ink opacity-0 transition-opacity group-hover:opacity-100">{note.title}</span>
+            {showNoteLabels ? (
+              <span className="max-w-[130px] truncate text-center text-[10px] leading-tight text-ink/75 transition-colors group-hover:text-ink">{note.title}</span>
+            ) : (
+              <span className="pointer-events-none absolute left-1/2 top-full z-30 mt-1 max-w-[200px] -translate-x-1/2 truncate whitespace-nowrap rounded-md border border-line bg-black/85 px-1.5 py-0.5 text-[10px] text-ink opacity-0 transition-opacity group-hover:opacity-100">{note.title}</span>
+            )}
           </button>
         )
       })}
 
-      {/* Zentral-Hub der aktuellen Ebene */}
+      {/* Prominenter Zentral-Hub der aktuellen Ebene */}
+      <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{ width: 116, height: 116, background: `radial-gradient(circle, ${c.color}22 0%, transparent 70%)` }} />
       <Hub icon={c.icon} color={c.color} active title={path.length > 1 ? 'aktueller Ordner' : c.name} />
       {settings.labels && (
-        <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 whitespace-nowrap text-center" style={{ marginTop: 30 }}>
-          <div className="max-w-[220px] truncate text-[12.5px] font-semibold text-ink">{path.length > 1 ? path[path.length - 1] : c.name}</div>
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 whitespace-nowrap text-center" style={{ marginTop: 32 }}>
+          <div className="max-w-[220px] truncate text-[13px] font-semibold text-ink">{path.length > 1 ? path[path.length - 1] : c.name}</div>
           <div className="mt-0.5 font-mono text-[9.5px] text-faint">{folders.length} Ordner · {notes.length} Notizen</div>
         </div>
       )}
