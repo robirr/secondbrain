@@ -1,7 +1,10 @@
-import { SlidersHorizontal, Bell } from 'lucide-react'
+import { SlidersHorizontal } from 'lucide-react'
 import Search from './Search'
+import { useStore } from '../store'
 
 export default function Topbar() {
+  const selected = useStore((s) => s.selected)
+  const setSelected = useStore((s) => s.setSelected)
   return (
     <header className="relative z-10 flex h-16 shrink-0 items-center gap-4 px-6">
       <div>
@@ -13,17 +16,17 @@ export default function Topbar() {
       <Search />
 
       <div className="flex items-center gap-1.5">
-        <TopIcon icon={SlidersHorizontal} title="Ansicht konfigurieren" />
-        <TopIcon icon={Bell} title="Benachrichtigungen" />
+        <button
+          title="Ansichtseinstellungen"
+          onClick={() => setSelected(null)}
+          className={[
+            'glass grid h-9 w-9 place-items-center rounded-xl transition-colors',
+            selected ? 'text-muted hover:text-ink' : 'text-c-wissen',
+          ].join(' ')}
+        >
+          <SlidersHorizontal size={16} />
+        </button>
       </div>
     </header>
-  )
-}
-
-function TopIcon({ icon: Icon, title }: { icon: typeof Bell; title: string }) {
-  return (
-    <button title={title} className="glass grid h-9 w-9 place-items-center rounded-xl text-muted transition-colors hover:text-ink">
-      <Icon size={16} />
-    </button>
   )
 }

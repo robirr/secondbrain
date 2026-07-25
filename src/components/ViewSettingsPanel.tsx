@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Cloud, Globe, Disc3, Layers, Share2, Boxes, Save, RotateCcw, Camera, Trash2 } from 'lucide-react'
+import { Cloud, Globe, Disc3, Layers, Share2, Save, RotateCcw, Camera, Trash2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { CLUSTERS } from '../data/clusters'
 import { useStore } from '../store'
@@ -34,7 +34,6 @@ function exportScreenshot(): string | null {
 }
 
 const VIEWS: { key: string; label: string; icon: LucideIcon }[] = [
-  { key: 'architektur', label: 'Architektur', icon: Boxes },
   { key: 'ring', label: 'Ring', icon: Disc3 },
   { key: 'ebenen', label: 'Ebenen', icon: Layers },
   { key: 'globus', label: 'Globus', icon: Globe },
@@ -73,9 +72,6 @@ export default function ViewSettingsPanel() {
               )
             })}
           </div>
-          {settings.view !== 'ring' && (
-            <p className="mt-2 text-[11px] text-faint">Nur „Ring" ist in dieser Version aktiv — weitere Ansichten folgen.</p>
-          )}
         </Group>
 
         <Group title="Darstellung">
