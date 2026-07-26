@@ -15,6 +15,10 @@ server {
         proxy_read_timeout 300s;      # Modell-Laden/lange Anfragen zulassen
     }
 
+    # Das Volume ist die Vault-WURZEL — _system/ (u.a. .env mit den Quell-Tokens) und Punktdateien
+    # dürfen NIE über HTTP erreichbar sein. Regex-Standort gewinnt gegen das Präfix /data/.
+    location ~ ^/data/(?:_system/|\.) { return 404; }
+
     # Produktive Daten (gemountetes Volume) — 404 bei fehlender Datei statt SPA-Fallback
     location /data/ {
         try_files $uri =404;

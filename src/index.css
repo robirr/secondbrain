@@ -94,3 +94,9 @@ body {
 .md th { background: rgba(255,255,255,0.04); font-weight: 600; }
 .md hr { border: none; border-top: 1px solid var(--color-line); margin: 1.4em 0; }
 .md img { max-width: 100%; border-radius: 8px; }
+/* toter Verweis — sichtbares Vertrauenssignal statt stiller Sackgasse, nicht klickbar */
+.md .dead { color: var(--color-faint); text-decoration: line-through;
+  text-decoration-color: rgba(255,122,112,0.6); border-bottom: 1px dotted rgba(255,122,112,0.45); cursor: help; }
+.md .dead svg, .md a svg { display: inline; vertical-align: -1px; margin-left: 2px; opacity: 0.65; }
+.md .img-missing { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px;
+  border: 1px dashed var(--color-line); border-radius: 8px; font-size: 12px; color: var(--color-faint); }

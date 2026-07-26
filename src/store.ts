@@ -17,21 +17,26 @@ export interface Settings {
 }
 
 export interface RawNote { id: string; title: string; cluster: string }
+export interface NoteEdge { source: string; target: string } // Vault-relative Notiz-Ids
 
 interface State {
   selected: string | null
   hovered: string | null
   openNote: string | null // Dateipfad der geöffneten Notiz (Lesepanel)
+  noteHistory: string[] // Lesepfad im Panel (ältester zuerst); openNote selbst nicht enthalten
   drill: string | null // Cluster-Ordner, in den hineingezoomt wird
   drillReturnView: string
   settings: Settings
   nodes: VizNode[]
   edges: VizEdge[]
   rawNotes: RawNote[]
+  noteEdges: NoteEdge[] // Notiz-Kanten aus graph.json, UNaggregiert (für Rück-/Verweise)
   dataSource: 'demo' | 'live'
   setSelected: (id: string | null) => void
   setHovered: (id: string | null) => void
   setOpenNote: (path: string | null) => void
+  pushNote: (id: string) => void // Sprung IM Panel (Link/Verweis) — mit Verlauf
+  backNote: () => void
   enterDrill: (folder: string) => void
   exitDrill: () => void
   setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void
@@ -43,9 +48,11 @@ export const useStore = create<State>((set) => ({
   selected: null,
   hovered: null,
   openNote: null,
+  noteHistory: [],
   drill: null,
   drillReturnView: 'ring',
   rawNotes: [],
+  noteEdges: [],
   settings: {
     view: 'ring',
     detail: 75,
@@ -61,7 +68,18 @@ export const useStore = create<State>((set) => ({
   dataSource: 'demo',
   setSelected: (id) => set({ selected: id }),
   setHovered: (id) => set({ hovered: id }),
-  setOpenNote: (path) => set({ openNote: path }),
+  // Einstieg von aussen (Suche, Inspector, Wolke) beginnt einen neuen Lesepfad
+  setOpenNote: (path) => set({ openNote: path, noteHistory: [] }),
+  // Schritt im Panel: Verlauf wächst; ein Selbstlink ändert nichts
+  pushNote: (id) => set((s) => (id === s.openNote ? {} : {
+    openNote: id,
+    noteHistory: s.openNote ? [...s.noteHistory, s.openNote].slice(-50) : s.noteHistory,
+  })),
+  backNote: () => set((s) => {
+    const h = [...s.noteHistory]
+    const prev = h.pop()
+    return prev ? { openNote: prev, noteHistory: h } : {}
+  }),
   enterDrill: (folder) => set((s) => ({
     drill: folder,
     drillReturnView: s.drill ? s.drillReturnView : s.settings.view,
@@ -79,7 +97,11 @@ export const useStore = create<State>((set) => ({
       if (!g || !Array.isArray(g.nodes) || g.nodes.length === 0) return
       const { nodes, edges } = mapGraph(g)
       const rawNotes: RawNote[] = g.nodes.map((n: RawNote) => ({ id: n.id, title: n.title, cluster: n.cluster }))
-      set({ nodes, edges, rawNotes, dataSource: 'live', selected: null })
+      // Notiz-Kanten unverändert übernehmen (mapGraph aggregiert nur für die Cluster-Sicht)
+      const noteEdges: NoteEdge[] = Array.isArray(g.edges)
+        ? g.edges.map((e: NoteEdge) => ({ source: e.source, target: e.target }))
+        : []
+      set({ nodes, edges, rawNotes, noteEdges, dataSource: 'live', selected: null })
     } catch {
       /* Demo-Daten behalten */
     }

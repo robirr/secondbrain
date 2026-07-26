@@ -1,4 +1,4 @@
-import { X, Crosshair, Share2, Waypoints, ExternalLink } from 'lucide-react'
+import { X, Crosshair, Share2 } from 'lucide-react'
 import type { Status } from '../data/demo'
 import { useStore } from '../store'
 
@@ -10,7 +10,7 @@ const STATUS_LABEL: Record<Status, string> = { active: 'aktiv', inactive: 'inakt
 const STATUS_COLOR: Record<Status, string> = { active: '#57d07f', inactive: '#8798b5', warning: '#f6c344', archived: '#565d70' }
 
 export default function InspectorPanel() {
-  const { selected, setSelected, setHovered, setOpenNote, nodes, edges, rawNotes } = useStore()
+  const { selected, setSelected, setHovered, setOpenNote, setSetting, enterDrill, nodes, edges, rawNotes } = useStore()
   const node = nodes.find((n) => n.id === selected)
   if (!node) return null
 
@@ -87,10 +87,8 @@ export default function InspectorPanel() {
       </div>
 
       <div className="grid grid-cols-2 gap-2 border-t border-line p-4">
-        <Action icon={Crosshair} label="Fokussieren" onClick={() => setSelected(node.id)} />
-        <Action icon={Waypoints} label="Beziehungen" onClick={() => setSelected(node.id)} />
-        <Action icon={Share2} label="Im Graph" onClick={() => useStore.getState().setSetting('view', 'graph')} />
-        <Action icon={ExternalLink} label="Öffnen" onClick={() => {}} muted />
+        <Action icon={Share2} label="Im Graph" onClick={() => setSetting('view', 'graph')} />
+        {clusterFolder && <Action icon={Crosshair} label="Hineinzoomen" onClick={() => enterDrill(clusterFolder)} />}
       </div>
     </div>
   )

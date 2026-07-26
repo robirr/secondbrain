@@ -55,10 +55,11 @@ export const KNOWLEDGE: VizNode[] = CLUSTERS.map((c) => ({
   description: `Wissenscluster „${c.label}".`, meta: { Notizen: String(KNOWLEDGE_COUNT[c.key] ?? 0) },
 }))
 
+// status je Eintrag als const — sonst weitet TypeScript die gemischte Liste auf `string`.
 export const PROJECTS: VizNode[] = [
-  { id: 'p-alpha', name: 'Projekt Alpha', icon: 'box', status: 'active', meta: { Fortschritt: '72 %', Owner: 'Roman' } },
-  { id: 'p-beta', name: 'Projekt Beta', icon: 'box', status: 'active', meta: { Fortschritt: '38 %', Owner: 'Roman' } },
-  { id: 'p-gamma', name: 'Projekt Gamma', icon: 'box', status: 'warning', meta: { Fortschritt: '15 %', Owner: 'Roman' } },
+  { id: 'p-alpha', name: 'Projekt Alpha', icon: 'box', status: 'active' as const, meta: { Fortschritt: '72 %', Owner: 'Roman' } },
+  { id: 'p-beta', name: 'Projekt Beta', icon: 'box', status: 'active' as const, meta: { Fortschritt: '38 %', Owner: 'Roman' } },
+  { id: 'p-gamma', name: 'Projekt Gamma', icon: 'box', status: 'warning' as const, meta: { Fortschritt: '15 %', Owner: 'Roman' } },
 ].map((n) => ({ ...n, type: 'project' as const, ring: 3 as const, color: '#4c8dff', description: 'Aktives Projekt.' }))
 
 export const EXTERNAL: VizNode[] = [
