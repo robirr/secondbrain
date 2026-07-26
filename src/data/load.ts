@@ -2,7 +2,7 @@ import type { VizNode, VizEdge } from './demo'
 
 // graph.json (Indexer-Landkarte)
 export interface GraphJson {
-  nodes: { id: string; title: string; cluster: string; tags?: string[]; size?: number }[]
+  nodes: { id: string; title: string; cluster: string; tags?: string[]; source?: string | null; size?: number }[]
   edges: { source: string; target: string }[]
 }
 

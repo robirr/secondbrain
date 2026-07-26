@@ -16,7 +16,7 @@ export interface Settings {
   filter: FilterKey
 }
 
-export interface RawNote { id: string; title: string; cluster: string }
+export interface RawNote { id: string; title: string; cluster: string; size?: number; source?: string | null }
 export interface NoteEdge { source: string; target: string } // Vault-relative Notiz-Ids
 
 interface State {
@@ -96,7 +96,9 @@ export const useStore = create<State>((set) => ({
       const g = await res.json()
       if (!g || !Array.isArray(g.nodes) || g.nodes.length === 0) return
       const { nodes, edges } = mapGraph(g)
-      const rawNotes: RawNote[] = g.nodes.map((n: RawNote) => ({ id: n.id, title: n.title, cluster: n.cluster }))
+      const rawNotes: RawNote[] = g.nodes.map((n: RawNote) => ({
+        id: n.id, title: n.title, cluster: n.cluster, size: n.size, source: n.source,
+      }))
       // Notiz-Kanten unverändert übernehmen (mapGraph aggregiert nur für die Cluster-Sicht)
       const noteEdges: NoteEdge[] = Array.isArray(g.edges)
         ? g.edges.map((e: NoteEdge) => ({ source: e.source, target: e.target }))
