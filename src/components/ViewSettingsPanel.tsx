@@ -83,18 +83,7 @@ export default function ViewSettingsPanel() {
             <input type="range" min={0} max={100} value={settings.detail}
               onChange={(e) => setSetting('detail', +e.target.value)}
               className="h-1 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-[#8b7cf6]" />
-            <p className="mt-1 text-[10px] text-faint">Ab 60 % zeigen Cluster ihre Notiz-Anzahl.</p>
-          </div>
-          <div className="mb-3">
-            <div className="mb-1.5 text-[12px] text-muted">Angezeigte Ebenen</div>
-            <div className="flex gap-1.5">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button key={n} onClick={() => setSetting('layers', n)}
-                  className={['h-8 flex-1 rounded-lg border font-mono text-[12px] transition-colors',
-                    settings.layers >= n ? 'border-[rgba(139,124,246,0.5)] bg-[rgba(139,124,246,0.14)] text-ink' : 'border-line text-faint hover:bg-white/[0.04]'].join(' ')}>{n}</button>
-              ))}
-            </div>
-            <p className="mt-1 text-[10px] text-faint">1 Orchestrator · 2 +Kern · 3 +Wissen · 4 +Aktive Welt</p>
+            <p className="mt-1 text-[10px] text-faint">Dichte der Sterne in der Wolken-Ansicht.</p>
           </div>
           <div className="space-y-1">
             <Toggle k="animation" label="Animation" />
@@ -180,7 +169,7 @@ export default function ViewSettingsPanel() {
 }
 
 function resetSettings(setSetting: ReturnType<typeof useStore.getState>['setSetting']) {
-  setSetting('detail', 75); setSetting('layers', 4); setSetting('animation', true)
+  setSetting('detail', 75); setSetting('animation', true)
   setSetting('labels', true); setSetting('verbindungen', false); setSetting('extern', true)
   setSetting('filter', 'alle')
 }

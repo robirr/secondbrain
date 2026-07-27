@@ -3,17 +3,11 @@
 // Landkarte. Nichts erfunden: was es im Bestand nicht gibt, steht hier auch nicht.
 import { useMemo } from 'react'
 import { clusterMeta } from '../data/load'
+import { dotSize } from '../display'
 import { useStore } from '../store'
 import type { RawNote } from '../store'
 
 const CELL = 14 // Rasterabstand der Punkte
-
-// Punktgröße aus der Dateigröße (logarithmisch: 45 B … 16 kB → 3 … 9 px)
-function dotSize(bytes: number | undefined): number {
-  const s = Math.max(45, Math.min(bytes ?? 45, 20000))
-  const t = (Math.log(s) - Math.log(45)) / (Math.log(20000) - Math.log(45))
-  return 3 + t * 6
-}
 
 const kb = (bytes: number) => `${Math.round(bytes / 1024)} KB`
 

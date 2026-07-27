@@ -5,6 +5,13 @@ import type { VizNode, VizEdge } from './data/demo'
 
 export const isNoteId = (id: string) => /\.md$/i.test(id)
 
+/** Punktgröße einer Notiz aus ihrer Dateilänge (logarithmisch: 45 B … 20 kB → 3 … 9 px).
+ *  Gemeinsam von Ebenen- und Ring-Ansicht genutzt, damit ein Punkt überall dasselbe bedeutet. */
+export function dotSize(bytes: number | undefined): number {
+  const s = Math.max(45, Math.min(bytes ?? 45, 20000))
+  return 3 + ((Math.log(s) - Math.log(45)) / (Math.log(20000) - Math.log(45))) * 6
+}
+
 /** Anzuzeigende Knoten/Kanten: Basis-Cluster, oder im Drill die Notizen eines Clusters. */
 export function useDisplayNodes(): { nodes: VizNode[]; edges: VizEdge[]; isDrill: boolean } {
   const nodes = useStore((s) => s.nodes)

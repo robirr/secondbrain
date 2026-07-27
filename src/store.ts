@@ -8,7 +8,6 @@ export type FilterKey = 'alle' | 'wissen' | 'projekte' | 'extern' | 'aktiv'
 export interface Settings {
   view: string
   detail: number
-  layers: number
   animation: boolean
   labels: boolean
   verbindungen: boolean
@@ -56,7 +55,6 @@ export const useStore = create<State>((set) => ({
   settings: {
     view: 'ring',
     detail: 75,
-    layers: 4,
     animation: true,
     labels: true,
     verbindungen: false, // Standard: Verbindungen nur bei Hover
