@@ -78,10 +78,12 @@ export const useStore = create<State>((set) => ({
     const prev = h.pop()
     return prev ? { openNote: prev, noteHistory: h } : {}
   }),
+  // Ansichten, die einen Ordner selbst darstellen können — dort bleibt man beim Hineingehen.
+  // Aus Ebenen/Cloud heraus gibt es keine Ordner-Darstellung, daher der Wechsel auf Ring.
   enterDrill: (folder) => set((s) => ({
     drill: folder,
     drillReturnView: s.drill ? s.drillReturnView : s.settings.view,
-    settings: { ...s.settings, view: 'ring' },
+    settings: ['ring', 'graph', 'globus'].includes(s.settings.view) ? s.settings : { ...s.settings, view: 'ring' },
     selected: null,
   })),
   exitDrill: () => set((s) => ({ drill: null, settings: { ...s.settings, view: s.drillReturnView }, selected: null })),
