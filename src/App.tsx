@@ -5,8 +5,8 @@ import Topbar from './components/Topbar'
 import RightPanel from './components/RightPanel'
 import ViewSwitcher from './components/ViewSwitcher'
 import NotePanel from './components/NotePanel'
-import { CLUSTERS } from './data/clusters'
 import { clusterMeta } from './data/load'
+import { useVisibleNotes } from './display'
 import { useStore } from './store'
 import { ChevronLeft, Layers as LayersIcon } from 'lucide-react'
 
@@ -39,7 +39,7 @@ export default function App() {
 function DrillBar() {
   const drill = useStore((s) => s.drill)
   const exitDrill = useStore((s) => s.exitDrill)
-  const rawNotes = useStore((s) => s.rawNotes)
+  const rawNotes = useVisibleNotes()
   if (!drill) return null
   const m = clusterMeta(drill)
   const count = rawNotes.filter((r) => r.cluster === drill).length
@@ -56,17 +56,27 @@ function DrillBar() {
   )
 }
 
+// Legende der WIRKLICH vorhandenen Bereiche (aus der Landkarte), mit sichtbarer Anzahl.
 function Legend() {
+  const nodes = useStore((s) => s.nodes)
+  const visible = useVisibleNotes()
+  const clusters = nodes.filter((n) => n.type === 'knowledge' && n.meta?.Ordner)
+  if (clusters.length === 0) return null
   return (
     <div className="glass fade-up absolute bottom-5 left-5 rounded-2xl px-4 py-3">
-      <div className="eyebrow mb-2">Cluster</div>
+      <div className="eyebrow mb-2">Bereiche</div>
       <div className="grid grid-cols-2 gap-x-5 gap-y-1.5">
-        {CLUSTERS.map((c) => (
-          <div key={c.key} className="flex items-center gap-2 text-[11.5px] text-muted">
-            <span className="h-2 w-2 rounded-full" style={{ background: c.color, boxShadow: `0 0 8px -1px ${c.color}` }} />
-            {c.label}
-          </div>
-        ))}
+        {clusters.map((c) => {
+          const n = visible.filter((r) => r.cluster === c.meta!.Ordner).length
+          return (
+            <div key={c.id} className={`flex items-center gap-2 text-[11.5px] ${n ? 'text-muted' : 'text-faint/50'}`}>
+              <span className="h-2 w-2 shrink-0 rounded-full"
+                style={{ background: c.color, boxShadow: n ? `0 0 8px -1px ${c.color}` : undefined, opacity: n ? 1 : 0.35 }} />
+              {c.name}
+              <span className="ml-auto font-mono text-[10px] text-faint">{n}</span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

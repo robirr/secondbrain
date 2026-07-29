@@ -3,12 +3,11 @@
 // Satelliten, in der Mitte das Second Brain. Im Drill zeigt dieselbe Ansicht die Notizen
 // eines Ordners als Knotenring (unverändert, weil die Navigation daran hängt).
 import { useMemo, useState } from 'react'
-import { passesFilter } from '../data/demo'
 import type { VizNode } from '../data/demo'
 import { getIcon } from '../icons'
 import { useStore } from '../store'
 import type { RawNote } from '../store'
-import { useDisplayNodes, isNoteId, dotSize } from '../display'
+import { useDisplayNodes, isNoteId, dotSize, useVisibleNotes, useFilterActive } from '../display'
 
 const C = 500
 const R_HOLE = 150 // Innenkante der Tortenstücke (Mitte bleibt für Hub und Quellen frei)
@@ -69,7 +68,8 @@ export default function RingView() {
 // ---------------------------------------------------------------- Übersicht ---
 
 function ClusterRing() {
-  const rawNotes = useStore((s) => s.rawNotes)
+  const rawNotes = useVisibleNotes()
+  const filterActive = useFilterActive()
   const nodes = useStore((s) => s.nodes)
   const noteEdges = useStore((s) => s.noteEdges)
   const settings = useStore((s) => s.settings)
@@ -86,8 +86,8 @@ function ClusterRing() {
 
   const brain = useMemo(() => nodes.find((n) => n.type === 'orchestrator'), [nodes])
   const clusters = useMemo(
-    () => nodes.filter((n) => n.type === 'knowledge' && n.meta?.Ordner && passesFilter(n, settings.filter)),
-    [nodes, settings.filter],
+    () => nodes.filter((n) => n.type === 'knowledge' && n.meta?.Ordner),
+    [nodes],
   )
 
   // Tortenstücke: Winkel proportional zur Notizenzahl, kleine Bereiche behalten 4° Mindestbreite
@@ -151,12 +151,10 @@ function ClusterRing() {
       .filter((c): c is { e: typeof c.e; a: { x: number; y: number }; b: { x: number; y: number } } => !!c.a && !!c.b)
   }, [noteEdges, notePos, settings.verbindungen, hoverNote])
 
-  if (rawNotes.length === 0)
-    return <div className="grid h-full place-items-center text-[13px] text-faint">Keine Landkarte geladen (graph.json fehlt).</div>
-  if (wedges.length === 0)
+  if (rawNotes.length === 0 || wedges.length === 0)
     return (
       <div className="grid h-full place-items-center text-[13px] text-faint">
-        Der Filter „{settings.filter}" trifft in dieser Landkarte auf keinen Bereich.
+        {filterActive ? 'Der Filter lässt keine Notiz übrig.' : 'Keine Landkarte geladen (graph.json fehlt).'}
       </div>
     )
 

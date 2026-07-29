@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useVisibleNotes } from '../display'
 import { useStore } from '../store'
 
 export interface CloudNote { id: string; title: string }
@@ -29,7 +30,7 @@ export interface TreeLevel { folders: TreeFolder[]; notes: CloudNote[] }
 /** Inhalt EINER Ordner-Ebene: direkte Unterordner (mit Notizenzahl) + Notizen genau in diesem Ordner.
  *  path = ["50-Projekte", "Iveco 9016", ...]. Beliebig tief — so viele Ebenen wie echte Ordner. */
 export function useTreeLevel(path: string[]): TreeLevel {
-  const rawNotes = useStore((s) => s.rawNotes)
+  const rawNotes = useVisibleNotes()
   return useMemo(() => {
     const depth = path.length
     if (depth === 0) return { folders: [], notes: [] }
@@ -56,10 +57,11 @@ export function useTreeLevel(path: string[]): TreeLevel {
 /** Cluster-Wolken für die Cloud-Ansicht: echte Notizen (Sterne) + echte Unterordner (Unterthemen). */
 export function useClouds(): ClusterCloud[] {
   const nodes = useStore((s) => s.nodes)
-  const rawNotes = useStore((s) => s.rawNotes)
+  const allNotes = useStore((s) => s.rawNotes)
+  const rawNotes = useVisibleNotes()
   return useMemo(() => {
     const knowledge = nodes.filter((n) => n.type === 'knowledge')
-    return knowledge.map((n) => {
+    const clouds = knowledge.map((n) => {
       const folder = (n.meta?.Ordner as string) || n.id.replace(/^cl:/, '')
       const notes = rawNotes.filter((r) => r.cluster === folder)
       const subCount = new Map<string, number>()
@@ -74,10 +76,14 @@ export function useClouds(): ClusterCloud[] {
       const metaCount = Number(String(n.meta?.Notizen ?? '').replace(/\D/g, '')) || 0
       return {
         id: n.id, folder, name: n.name, color: n.color, icon: n.icon,
-        count: notes.length || metaCount,
+        // bei gesetztem Filter zählt nur, was sichtbar ist; die Meta-Zahl gilt nur ohne Bestand
+        count: rawNotes.length ? notes.length : metaCount,
         notes: notes.map((r) => ({ id: r.id, title: r.title })),
         subs,
       }
     })
-  }, [nodes, rawNotes])
+    // Wolken ohne sichtbare Notiz verschwinden (Filter blendet aus). Ohne Bestand — also
+    // mit den Demo-Daten — bleiben sie stehen, dort gibt es keine Notizen zum Zählen.
+    return allNotes.length ? clouds.filter((c) => c.count > 0) : clouds
+  }, [nodes, rawNotes, allNotes])
 }

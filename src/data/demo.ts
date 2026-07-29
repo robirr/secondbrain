@@ -85,18 +85,6 @@ export const EDGES: VizEdge[] = [
   { source: 'skills', target: 'tools', kind: 'uses' }, { source: 'workflows', target: 'mcp', kind: 'uses' },
 ]
 
-export function passesFilter(n: VizNode, filter: string): boolean {
-  if (filter === 'alle') return true
-  if (n.type === 'orchestrator') return true // Anker immer sichtbar
-  switch (filter) {
-    case 'wissen': return n.type === 'knowledge'
-    case 'projekte': return n.type === 'project'
-    case 'extern': return n.type === 'external'
-    case 'aktiv': return n.type === 'project' && n.status === 'active'
-    default: return true
-  }
-}
-
 export const STATS = {
   nodes: NODES.length,
   edges: EDGES.length,

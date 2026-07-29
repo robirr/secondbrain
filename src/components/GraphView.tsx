@@ -1,20 +1,26 @@
 import { useMemo } from 'react'
-import { passesFilter } from '../data/demo'
 import { useStore } from '../store'
-import { useDisplayNodes, isNoteId } from '../display'
+import { useDisplayNodes, isNoteId, useVisibleNotes } from '../display'
 
 const C = 500, R = 388
 const TYPE_ORDER = ['core', 'knowledge', 'project', 'external'] as const
 
 export default function GraphView() {
-  const { hovered, selected, setHovered, setSelected, settings, setOpenNote, enterDrill } = useStore()
+  const { hovered, selected, setHovered, setSelected, setOpenNote, enterDrill } = useStore()
   const { nodes, edges: allEdges, isDrill } = useDisplayNodes()
+  const visible = useVisibleNotes()
+
+  // Bereiche, in denen der Filter noch Notizen übrig lässt
+  const clusterHasNotes = useMemo(() => {
+    const s = new Set(visible.map((n) => n.cluster))
+    return (folder: unknown) => typeof folder !== 'string' || s.has(folder)
+  }, [visible])
 
   const centerId = useMemo(() => nodes.find((n) => n.type === 'orchestrator')?.id ?? 'brain', [nodes])
   const pos = useMemo(() => {
     const out: Record<string, { x: number; y: number }> = { [centerId]: { x: C, y: C } }
     const others = nodes.filter((n) => n.type !== 'orchestrator')
-      .filter((n) => isDrill || ((settings.extern || n.type !== 'external') && passesFilter(n, settings.filter)))
+      .filter((n) => isDrill || clusterHasNotes(n.meta?.Ordner))
       .sort((a, b) => TYPE_ORDER.indexOf(a.type as never) - TYPE_ORDER.indexOf(b.type as never))
     const step = (Math.PI * 2) / Math.max(1, others.length)
     others.forEach((n, i) => {
@@ -22,7 +28,7 @@ export default function GraphView() {
       out[n.id] = { x: C + R * Math.cos(a), y: C + R * Math.sin(a) }
     })
     return out
-  }, [nodes, centerId, isDrill, settings.extern, settings.filter])
+  }, [nodes, centerId, isDrill, clusterHasNotes])
 
   const focus = hovered ?? selected
   const nb = useMemo(() => {

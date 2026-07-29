@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { Cloud, Globe, Disc3, Layers, Share2, Save, RotateCcw, Camera, Trash2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Cloud, Globe, Disc3, Layers, Share2, Save, RotateCcw, Camera, Trash2, Unlink } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { CLUSTERS } from '../data/clusters'
+import { useVisibleNotes } from '../display'
 import { useStore } from '../store'
 import type { Settings } from '../store'
 
@@ -42,8 +42,45 @@ const VIEWS: { key: string; label: string; icon: LucideIcon }[] = [
 ]
 
 export default function ViewSettingsPanel() {
-  const { settings, setSetting, applySettings, nodes, edges, dataSource } = useStore()
-  const activeProjects = nodes.filter((n) => n.type === 'project' && n.status === 'active').length
+  const { settings, setSetting, applySettings, nodes, rawNotes, noteEdges, dataSource } = useStore()
+  const visible = useVisibleNotes()
+  const total = rawNotes.length
+  const shown = visible.length
+
+  // Bereiche aus der Landkarte — mit sichtbarer und tatsächlicher Anzahl
+  const clusters = useMemo(() => nodes
+    .filter((n) => n.type === 'knowledge' && n.meta?.Ordner)
+    .map((n) => {
+      const folder = n.meta!.Ordner as string
+      return {
+        folder, name: n.name, color: n.color,
+        total: rawNotes.filter((r) => r.cluster === folder).length,
+        shown: visible.filter((r) => r.cluster === folder).length,
+      }
+    })
+    .filter((c) => c.total > 0), [nodes, rawNotes, visible])
+
+  const sources = useMemo(() => {
+    const by = new Map<string, number>()
+    for (const n of rawNotes) by.set(n.source || 'ohne Angabe', (by.get(n.source || 'ohne Angabe') ?? 0) + 1)
+    return [...by.entries()].sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count }))
+  }, [rawNotes])
+
+  const linkedCount = useMemo(() => {
+    const s = new Set<string>()
+    for (const e of noteEdges) { s.add(e.source); s.add(e.target) }
+    return rawNotes.filter((r) => s.has(r.id)).length
+  }, [noteEdges, rawNotes])
+  const orphanCount = total - linkedCount
+
+  // Bereich an-/abwählen: aus „alle" wird beim ersten Klick „alle ausser diesem"
+  const toggleCluster = (folder: string) => {
+    const all = clusters.map((c) => c.folder)
+    const cur = settings.clusters ?? all
+    const next = cur.includes(folder) ? cur.filter((f) => f !== folder) : [...cur, folder]
+    setSetting('clusters', next.length === all.length ? null : next) // alle an = kein Filter
+  }
+
   const [presets, setPresets] = useState<Preset[]>(loadPresets)
   const [msg, setMsg] = useState<string | null>(null)
   const addPreset = () => { const p = [...presets, { name: `${settings.view} · ${settings.detail}%`, settings }]; setPresets(p); savePresets(p); setMsg('Preset gespeichert.') }
@@ -87,42 +124,66 @@ export default function ViewSettingsPanel() {
           </div>
           <div className="space-y-1">
             <Toggle k="animation" label="Animation" />
-            <Toggle k="labels" label="Labels" />
-            <Toggle k="verbindungen" label="Verbindungen (dauerhaft)" />
-            <Toggle k="extern" label="Externe Systeme" />
+            <Toggle k="labels" label="Beschriftungen" />
+            <Toggle k="verbindungen" label="Verweise dauerhaft zeigen" />
           </div>
         </Group>
 
-        <Group title="Filter">
-          <div className="flex flex-wrap gap-1.5">
-            {([['alle', 'Alle'], ['wissen', 'Wissen'], ['projekte', 'Projekte'], ['extern', 'Externe'], ['aktiv', 'Aktive Projekte']] as const).map(([key, label]) => {
-              const on = settings.filter === key
+        <Group title="Bereiche">
+          <div className="space-y-1">
+            {clusters.map((c) => {
+              const on = !settings.clusters || settings.clusters.includes(c.folder)
               return (
-                <button key={key} onClick={() => setSetting('filter', key)}
-                  className={['rounded-lg border px-2.5 py-1.5 text-[11.5px] transition-colors',
-                    on ? 'border-[rgba(139,124,246,0.5)] bg-[rgba(139,124,246,0.14)] text-ink' : 'border-line text-muted hover:bg-white/[0.04]'].join(' ')}>
-                  {label}
+                <button key={c.folder} onClick={() => toggleCluster(c.folder)}
+                  title={on ? `„${c.name}" ausblenden` : `„${c.name}" einblenden`}
+                  className={['flex w-full items-center gap-2.5 rounded-lg border px-2.5 py-1.5 text-[12px] transition-colors',
+                    on ? 'border-line bg-white/[0.03] text-ink' : 'border-transparent text-faint hover:bg-white/[0.02]'].join(' ')}>
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ background: c.color, opacity: on ? 1 : 0.3, boxShadow: on ? `0 0 8px -1px ${c.color}` : undefined }} />
+                  <span className="truncate">{c.name}</span>
+                  <span className="ml-auto font-mono text-[10px] text-faint">{c.shown === c.total ? c.total : `${c.shown}/${c.total}`}</span>
                 </button>
               )
             })}
           </div>
-          <p className="mt-1.5 text-[10px] text-faint">Wirkt in Ring & Graph (Orchestrator bleibt sichtbar).</p>
+          {settings.clusters && (
+            <button onClick={() => setSetting('clusters', null)}
+              className="mt-1.5 text-[11px] text-c-wissen hover:underline">alle Bereiche zeigen</button>
+          )}
         </Group>
 
-        <Group title="Farbschema">
-          <div className="flex flex-wrap gap-2">
-            {CLUSTERS.map((c) => (
-              <span key={c.key} title={c.label} className="h-5 w-5 rounded-full ring-1 ring-white/10"
-                style={{ background: c.color, boxShadow: `0 0 10px -2px ${c.color}` }} />
-            ))}
+        <Group title="Herkunft">
+          <div className="flex flex-wrap gap-1.5">
+            {sources.map((s) => {
+              const on = settings.source === s.name
+              return (
+                <button key={s.name} onClick={() => setSetting('source', on ? null : s.name)}
+                  title={`nur Notizen aus „${s.name}"`}
+                  className={['rounded-lg border px-2.5 py-1.5 text-[11.5px] transition-colors',
+                    on ? 'border-[rgba(139,124,246,0.5)] bg-[rgba(139,124,246,0.14)] text-ink' : 'border-line text-muted hover:bg-white/[0.04]'].join(' ')}>
+                  {s.name} <span className="font-mono text-[10px] text-faint">{s.count}</span>
+                </button>
+              )
+            })}
           </div>
         </Group>
 
-        <Group title="Informationen">
+        <Group title="Verweise">
+          <button onClick={() => setSetting('orphans', !settings.orphans)}
+            title="Notizen, auf die nichts verweist und die selbst nichts verlinken"
+            className={['flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-[12px] transition-colors',
+              settings.orphans ? 'border-[rgba(139,124,246,0.5)] bg-[rgba(139,124,246,0.14)] text-ink' : 'border-line text-muted hover:bg-white/[0.04]'].join(' ')}>
+            <span className="inline-flex items-center gap-2"><Unlink size={13} /> nur ohne Verweis</span>
+            <span className="font-mono text-[11px] text-faint">{orphanCount}</span>
+          </button>
+          <p className="mt-1.5 text-[10px] text-faint">{linkedCount} von {total} Notizen sind verknüpft.</p>
+        </Group>
+
+        <Group title="Bestand">
           <div className="grid grid-cols-3 gap-2">
-            <Stat label="Knoten" value={String(nodes.length)} />
-            <Stat label="Verbind." value={String(edges.length)} />
-            <Stat label="Aktiv" value={String(activeProjects)} />
+            <Stat label="sichtbar" value={String(shown)} />
+            <Stat label="Notizen" value={String(total)} />
+            <Stat label="Verweise" value={String(noteEdges.length)} />
           </div>
           <div className="mt-2 flex items-center justify-between text-[11px] text-faint">
             <span>Datenquelle</span>
@@ -170,8 +231,8 @@ export default function ViewSettingsPanel() {
 
 function resetSettings(setSetting: ReturnType<typeof useStore.getState>['setSetting']) {
   setSetting('detail', 75); setSetting('animation', true)
-  setSetting('labels', true); setSetting('verbindungen', false); setSetting('extern', true)
-  setSetting('filter', 'alle')
+  setSetting('labels', true); setSetting('verbindungen', false)
+  setSetting('clusters', null); setSetting('source', null); setSetting('orphans', false)
 }
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {

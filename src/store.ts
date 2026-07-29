@@ -3,16 +3,16 @@ import { NODES as DEMO_NODES, EDGES as DEMO_EDGES } from './data/demo'
 import type { VizNode, VizEdge } from './data/demo'
 import { mapGraph } from './data/load'
 
-export type FilterKey = 'alle' | 'wissen' | 'projekte' | 'extern' | 'aktiv'
-
 export interface Settings {
   view: string
   detail: number
   animation: boolean
   labels: boolean
   verbindungen: boolean
-  extern: boolean
-  filter: FilterKey
+  // Notiz-Filter — wirkt in allen Ansichten (Gefiltertes wird ausgeblendet)
+  clusters: string[] | null // null = alle Bereiche
+  source: string | null // null = alle Quellen
+  orphans: boolean // nur Notizen ohne Verweis
 }
 
 export interface RawNote { id: string; title: string; cluster: string; size?: number; source?: string | null }
@@ -58,8 +58,9 @@ export const useStore = create<State>((set) => ({
     animation: true,
     labels: true,
     verbindungen: false, // Standard: Verbindungen nur bei Hover
-    extern: true,
-    filter: 'alle',
+    clusters: null,
+    source: null,
+    orphans: false,
   },
   nodes: DEMO_NODES,
   edges: DEMO_EDGES,
@@ -80,12 +81,18 @@ export const useStore = create<State>((set) => ({
   }),
   // Ansichten, die einen Ordner selbst darstellen können — dort bleibt man beim Hineingehen.
   // Aus Ebenen/Cloud heraus gibt es keine Ordner-Darstellung, daher der Wechsel auf Ring.
-  enterDrill: (folder) => set((s) => ({
-    drill: folder,
-    drillReturnView: s.drill ? s.drillReturnView : s.settings.view,
-    settings: ['ring', 'graph', 'globus'].includes(s.settings.view) ? s.settings : { ...s.settings, view: 'ring' },
-    selected: null,
-  })),
+  enterDrill: (folder) => set((s) => {
+    const view = ['ring', 'graph', 'globus'].includes(s.settings.view) ? s.settings.view : 'ring'
+    // In einen ausgefilterten Bereich zu springen würde eine leere Ansicht zeigen —
+    // deshalb fällt der Bereichsfilter dabei weg.
+    const clusters = s.settings.clusters && !s.settings.clusters.includes(folder) ? null : s.settings.clusters
+    return {
+      drill: folder,
+      drillReturnView: s.drill ? s.drillReturnView : s.settings.view,
+      settings: { ...s.settings, view, clusters },
+      selected: null,
+    }
+  }),
   exitDrill: () => set((s) => ({ drill: null, settings: { ...s.settings, view: s.drillReturnView }, selected: null })),
   setSetting: (key, value) => set((s) => ({ settings: { ...s.settings, [key]: value } })),
   applySettings: (partial) => set((s) => ({ settings: { ...s.settings, ...partial } })),
