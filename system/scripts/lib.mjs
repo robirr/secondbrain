@@ -36,8 +36,9 @@ export const SOURCES = {
     label: 'Karakeep', type: 'karakeep', mode: 'pull',
     base_url: 'http://192.168.1.20:3000', auth_env: 'KARAKEEP_TOKEN',
     transport: 'REST-API', format: 'JSON (+ Inhalt)', scope: 'nur Notizen/Highlights',
-    script: null, sync: 'keiner',
-    note: 'Konnektor nie gebaut — konfiguriert, aber noch nie etwas geholt.',
+    script: null, sync: 'keiner', skipped: true,
+    note: 'Bewusst übersprungen (A4): dort liegen 322 reine Link-Lesezeichen und keine eigenen '
+      + 'Notizen/Highlights — für Lesezeichen ist das Brain nicht da. Darum gibt es keinen Konnektor.',
   },
   tududi: {
     label: 'tududi', type: 'tududi', mode: 'pull',
