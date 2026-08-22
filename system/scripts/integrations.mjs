@@ -19,6 +19,13 @@ const SCRIPTS = existsSync(VAULT_SCRIPTS) ? VAULT_SCRIPTS : HERE_DIR;
 const SCRIPTS_LABEL = SCRIPTS === VAULT_SCRIPTS ? '_system/scripts' : HERE_DIR;
 const NO_CMD = new Set(['lib.mjs', 'integrations.mjs']);   // Bibliotheken, nicht aufrufbar
 const PLAIN_ENV = /_(PORT|HOST)$/;                          // Weissliste für Klartext-Werte
+const CONTAINER_MOUNT = '/usr/share/nginx/html/data';       // so heisst der Vault IM Container
+
+// Welchen Pfad zeigen wir als „den Vault"? Im Container ist ROOT der Mount-Punkt — der hilft
+// niemandem weiter. Steht VAULT_HOST_PATH in docker-compose.yml, gewinnt der; sonst sagen wir
+// offen, dass es der Pfad im Container ist.
+const vaultPath = () => process.env.VAULT_HOST_PATH || ROOT;
+const vaultPathIsMount = () => !process.env.VAULT_HOST_PATH && ROOT === CONTAINER_MOUNT;
 
 // Ortszeit des Rechners, der indexiert — UTC wäre hier nur verwirrend.
 const stamp = ms => {
@@ -53,18 +60,24 @@ function describe(file) {
   return { description, command: NO_CMD.has(file) ? null : command };
 }
 
-// Zustand einer Quelle — gemessen, nicht behauptet.
-function stateOf(count, tokenSet, scriptOk) {
+// Zustand einer Quelle — gemessen, nicht behauptet. tokenState: gesetzt | fehlt | unbekannt
+// ('unbekannt' heisst: in diesem Vault liegt keine .env — z.B. beim Lauf im Container. Dann
+// darf hier NICHT 'kein Token' stehen, das waere eine Behauptung ueber etwas Ungesehenes.)
+function stateOf(count, tokenState, scriptOk) {
   if (count > 0) return 'liefert';
   if (!scriptOk) return 'nicht gebaut';
-  if (!tokenSet) return 'kein Token';
+  if (tokenState === 'fehlt') return 'kein Token';
   return 'bereit';
 }
 
 /** notes: [{ rel, cluster, source, mtime }] aus dem Indexlauf. */
 export function buildIntegrations({ notes, edges, clusters }) {
   const env = loadEnv();
-  const tokenSet = name => Boolean(name && env[name] && env[name].length > 0);
+  const envPath = join(ROOT, '_system', '.env');
+  const envFound = existsSync(envPath);
+  // Ohne .env wissen wir NICHTS ueber die Tokens — dann 'unbekannt', nicht 'fehlt'.
+  const tokenState = name => !envFound ? 'unbekannt'
+    : (name && env[name] && env[name].length > 0) ? 'gesetzt' : 'fehlt';
 
   // Herkunft im Bestand zählen (Frontmatter-Feld `source`).
   const seen = new Map();
@@ -98,14 +111,14 @@ export function buildIntegrations({ notes, edges, clusters }) {
       sync: s.sync,                                   // auto | manuell | keiner | push
       note: s.note,
       auth_env: s.auth_env,
-      token_set: tokenSet(s.auth_env),
+      token_state: tokenState(s.auth_env),
       script: s.script ? '_system/scripts/' + s.script : null,
       script_exists: scriptOk,
       command: scriptOk ? info.command : null,
       notes: found.count,
       newest: found.newest ? stamp(found.newest) : null,
       tracked_ids: (state.sources?.[key]?.ids || []).length,
-      state: stateOf(found.count, tokenSet(s.auth_env), scriptOk),
+      state: stateOf(found.count, tokenState(s.auth_env), scriptOk),
     };
   }).sort((a, b) => (a.mode === b.mode ? b.notes - a.notes : a.mode === 'pull' ? -1 : 1));
 
@@ -143,11 +156,14 @@ export function buildIntegrations({ notes, edges, clusters }) {
     command: 'qmd update && qmd embed', changed: null,
   });
 
-  // Geheimnisse: nur Namen und gesetzt/fehlt. Werte NUR aus der Weissliste.
+  // Geheimnisse: nur Namen und Zustand. Werte NUR aus der Weissliste.
+  // Gelistet wird, was in der .env steht UND was die Quellen brauchen — sonst waere die
+  // Liste ohne .env leer und man wuesste nicht einmal, welche Tokens gebraucht werden.
   const used = new Map();
   for (const s of Object.values(SOURCES)) if (s.auth_env) used.set(s.auth_env, s.label);
-  const secrets = Object.keys(env).filter(k => !PLAIN_ENV.test(k)).sort().map(name => ({
-    name, set: tokenSet(name), used_by: used.get(name) || null,
+  const names = [...new Set([...Object.keys(env).filter(k => !PLAIN_ENV.test(k)), ...used.keys()])].sort();
+  const secrets = names.map(name => ({
+    name, state: tokenState(name), used_by: used.get(name) || null,
   }));
   const config = Object.keys(env).filter(k => PLAIN_ENV.test(k)).sort()
     .map(name => ({ name, value: env[name] }));
@@ -197,8 +213,11 @@ export function buildIntegrations({ notes, edges, clusters }) {
       command: 'node _system/scripts/capture.mjs "Titel" "Textinhalt" "tag1,tag2"',
     },
     {
-      key: 'vault', name: 'Der Vault selbst', address: process.env.VAULT_HOST_PATH || ROOT,
-      what: 'Markdown ist die einzige Wahrheit. Dateien direkt bearbeiten ist erlaubt — danach ableiten (siehe Regel 7).',
+      key: 'vault', name: 'Der Vault selbst', address: vaultPath(),
+      what: 'Markdown ist die einzige Wahrheit. Dateien direkt bearbeiten ist erlaubt — danach ableiten (siehe Regel 7).'
+        + (vaultPathIsMount()
+          ? ' Der gezeigte Pfad ist der Mount-Punkt im Container; welcher Ordner das auf dem Wirt ist, steht in docker-compose.yml (VAULT_HOST_PATH setzt ihn hier ein).'
+          : ''),
       auth: 'Dateisystem', command: null,
     },
   ];
@@ -258,12 +277,11 @@ export function buildIntegrations({ notes, edges, clusters }) {
       edges: edges.length,
       clusters: clusters.length,
       inbox: inboxWaiting,
-      // Im Container ist ROOT der Mount-Pfad (/usr/share/nginx/html/data) — der Pfad auf dem
-      // Wirt kommt dann per VAULT_HOST_PATH aus docker-compose.yml.
-      path: process.env.VAULT_HOST_PATH || ROOT,
+      path: vaultPath(),
     },
     sources, foreign, tools, derived, secrets, config, access, rules,
     toolsFrom: SCRIPTS_LABEL,
+    envFound,                       // liegt in DIESEM Vault eine _system/.env?
     secretsFile: '_system/.env',
   };
 }

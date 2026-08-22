@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react'
 
 export type SourceState = 'liefert' | 'bereit' | 'nicht gebaut' | 'kein Token'
 
+// 'unbekannt' = in diesem Vault liegt keine _system/.env (z. B. beim Lauf im Container).
+// Dann behauptet die Ansicht nichts, statt „fehlt" zu melden.
+export type TokenState = 'gesetzt' | 'fehlt' | 'unbekannt'
+
 export interface IntSource {
   key: string
   label: string
@@ -17,7 +21,7 @@ export interface IntSource {
   sync: string
   note: string
   auth_env: string
-  token_set: boolean
+  token_state: TokenState
   script: string | null
   script_exists: boolean
   command: string | null
@@ -30,7 +34,7 @@ export interface IntSource {
 export interface IntForeign { name: string; notes: number; newest: string | null }
 export interface IntTool { file: string; description: string | null; command: string | null; library: boolean; changed: string | null }
 export interface IntDerived { name: string; path: string | null; description: string; command: string; changed: string | null }
-export interface IntSecret { name: string; set: boolean; used_by: string | null }
+export interface IntSecret { name: string; state: TokenState; used_by: string | null }
 
 // Zugangswege. address kann ein Platzhalter sein: 'origin' bzw. 'origin+/qmd/mcp' setzt die
 // Oberfläche selbst ein — sie kennt ihre eigene URL, der Indexer kann sie nicht kennen.
@@ -60,6 +64,7 @@ export interface Integrations {
   config: IntConfig[]
   secretsFile: string
   toolsFrom: string // Ordner, aus dem die Werkzeugliste stammt (Vault oder Container)
+  envFound: boolean // lag im indexierten Vault eine _system/.env?
 }
 
 export type IntLoad =

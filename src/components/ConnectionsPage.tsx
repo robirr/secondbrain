@@ -9,7 +9,13 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useIntegrations } from '../data/integrations'
-import type { IntAccess, IntRule, IntSource, SourceState } from '../data/integrations'
+import type { IntAccess, IntRule, IntSource, SourceState, TokenState } from '../data/integrations'
+
+const TOKEN_COLOR: Record<TokenState, string> = {
+  gesetzt: 'var(--color-c-beruf)',
+  fehlt: 'var(--color-c-gesundheit)',
+  unbekannt: 'var(--color-faint)',
+}
 
 const STATE_COLOR: Record<SourceState, string> = {
   liefert: 'var(--color-c-beruf)',
@@ -122,7 +128,7 @@ function SourceRow({ s, total }: { s: IntSource; total: number }) {
         <Fact k="Format" v={s.format} />
         <Fact k="Abgleich" v={SYNC_LABEL[s.sync] ?? s.sync} />
         <Fact k="Neueste Notiz" v={s.newest ?? '—'} />
-        <Fact k="Token" v={`${s.auth_env} · ${s.token_set ? 'gesetzt' : 'fehlt'}`} mono />
+        <Fact k="Token" v={`${s.auth_env} · ${s.token_state}`} mono />
         <Fact k="Bereits geholt" v={s.tracked_ids ? `${s.tracked_ids} Kennungen vermerkt` : '—'} />
       </div>
 
@@ -286,11 +292,10 @@ export default function ConnectionsPage() {
               {d.secrets.map((s) => (
                 <div key={s.name} className="flex items-baseline gap-2">
                   <span className="h-1.5 w-1.5 shrink-0 -translate-y-[2px] rounded-full"
-                    style={{ background: s.set ? 'var(--color-c-beruf)' : 'var(--color-c-gesundheit)' }} />
+                    style={{ background: TOKEN_COLOR[s.state] }} />
                   <span className="truncate font-mono text-[12px] text-muted">{s.name}</span>
-                  <span className="ml-auto shrink-0 text-[11.5px]"
-                    style={{ color: s.set ? 'var(--color-c-beruf)' : 'var(--color-c-gesundheit)' }}>
-                    {s.set ? 'gesetzt' : 'fehlt'}
+                  <span className="ml-auto shrink-0 text-[11.5px]" style={{ color: TOKEN_COLOR[s.state] }}>
+                    {s.state}
                   </span>
                   <span className="shrink-0 text-[11px] text-faint">{s.used_by ?? ''}</span>
                 </div>
@@ -302,9 +307,11 @@ export default function ConnectionsPage() {
               </div>
             )}
             <p className="mt-3 text-[12px] leading-relaxed text-faint">
-              Diese Ansicht kennt nur Namen und den Zustand gesetzt/fehlt — nie einen Wert.
+              {d.envFound
+                ? 'Diese Ansicht kennt nur Namen und den Zustand — nie einen Wert. '
+                : 'In diesem Vault liegt keine solche Datei, darum „unbekannt": von hier aus ist der Zustand nicht feststellbar. Die Tokens liegen auf dem Rechner, der die Konnektoren ausführt. '}
               <code className="mx-1 font-mono text-[11.5px]">{d.secretsFile}</code>
-              wird über HTTP nicht ausgeliefert.
+              wird über HTTP nie ausgeliefert.
             </p>
           </div>
         </Section>
