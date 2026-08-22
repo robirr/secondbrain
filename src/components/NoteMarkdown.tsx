@@ -6,6 +6,7 @@ import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkVaultLinks, { WIKI_SCHEME } from '../remark-vault-links'
+import remarkCallouts from '../remark-callouts'
 import { buildByBase, classifyHref, dataUrl, dirOf, imageUrl } from '../data/notes'
 import type { DeadReason, LinkCtx } from '../data/notes'
 import { useStore } from '../store'
@@ -59,7 +60,7 @@ export default function NoteMarkdown({ body, noteId }: { body: string; noteId: s
   const components = useMemo(() => makeComponents(ctx, pushNote), [ctx, pushNote])
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkVaultLinks]}
+      remarkPlugins={[remarkGfm, remarkVaultLinks, remarkCallouts]}
       // defaultUrlTransform würde das unbekannte Schema "wiki:" wegkürzen
       urlTransform={(url) => (url.startsWith(WIKI_SCHEME) ? url : defaultUrlTransform(url))}
       components={components}
