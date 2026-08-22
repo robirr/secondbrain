@@ -5,18 +5,24 @@ import { useStore } from '../store'
 export default function Topbar() {
   const selected = useStore((s) => s.selected)
   const setSelected = useStore((s) => s.setSelected)
+  const systemPage = useStore((s) => s.systemPage)
+  const onSystem = systemPage === 'verbindungen'
   return (
     <header className="relative z-10 flex h-16 shrink-0 items-center gap-4 px-6">
       <div>
-        <div className="text-[15px] font-semibold tracking-tight leading-none">Übersicht</div>
-        <div className="eyebrow mt-1">Dein Wissenssystem auf einen Blick</div>
+        <div className="text-[15px] font-semibold tracking-tight leading-none">
+          {onSystem ? 'Verbindungen' : 'Übersicht'}
+        </div>
+        <div className="eyebrow mt-1">
+          {onSystem ? 'Woher das Wissen kommt und was daraus gebaut wird' : 'Dein Wissenssystem auf einen Blick'}
+        </div>
       </div>
 
       {/* Globale Suche */}
       <Search />
 
       <div className="flex items-center gap-1.5">
-        <button
+        {!onSystem && <button
           title="Ansichtseinstellungen"
           onClick={() => setSelected(null)}
           className={[
@@ -25,7 +31,7 @@ export default function Topbar() {
           ].join(' ')}
         >
           <SlidersHorizontal size={16} />
-        </button>
+        </button>}
       </div>
     </header>
   )

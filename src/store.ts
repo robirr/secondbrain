@@ -25,6 +25,7 @@ interface State {
   noteHistory: string[] // Lesepfad im Panel (ältester zuerst); openNote selbst nicht enthalten
   drill: string | null // Cluster-Ordner, in den hineingezoomt wird
   drillReturnView: string
+  systemPage: string | null // Systemseite statt Visualisierung ('verbindungen') — null = Ansichten
   settings: Settings
   nodes: VizNode[]
   edges: VizEdge[]
@@ -34,6 +35,7 @@ interface State {
   setSelected: (id: string | null) => void
   setHovered: (id: string | null) => void
   setOpenNote: (path: string | null) => void
+  setSystemPage: (page: string | null) => void
   pushNote: (id: string) => void // Sprung IM Panel (Link/Verweis) — mit Verlauf
   backNote: () => void
   enterDrill: (folder: string) => void
@@ -50,6 +52,7 @@ export const useStore = create<State>((set) => ({
   noteHistory: [],
   drill: null,
   drillReturnView: 'ring',
+  systemPage: null,
   rawNotes: [],
   noteEdges: [],
   settings: {
@@ -66,6 +69,7 @@ export const useStore = create<State>((set) => ({
   edges: DEMO_EDGES,
   dataSource: 'demo',
   setSelected: (id) => set({ selected: id }),
+  setSystemPage: (page) => set({ systemPage: page }),
   setHovered: (id) => set({ hovered: id }),
   // Einstieg von aussen (Suche, Inspector, Wolke) beginnt einen neuen Lesepfad
   setOpenNote: (path) => set({ openNote: path, noteHistory: [] }),
@@ -91,10 +95,15 @@ export const useStore = create<State>((set) => ({
       drillReturnView: s.drill ? s.drillReturnView : s.settings.view,
       settings: { ...s.settings, view, clusters },
       selected: null,
+      systemPage: null,
     }
   }),
-  exitDrill: () => set((s) => ({ drill: null, settings: { ...s.settings, view: s.drillReturnView }, selected: null })),
-  setSetting: (key, value) => set((s) => ({ settings: { ...s.settings, [key]: value } })),
+  exitDrill: () => set((s) => ({ drill: null, settings: { ...s.settings, view: s.drillReturnView }, selected: null, systemPage: null })),
+  // Eine Ansicht zu wählen heisst: zurück zur Visualisierung.
+  setSetting: (key, value) => set((s) => ({
+    settings: { ...s.settings, [key]: value },
+    systemPage: key === 'view' ? null : s.systemPage,
+  })),
   applySettings: (partial) => set((s) => ({ settings: { ...s.settings, ...partial } })),
   loadData: async () => {
     try {

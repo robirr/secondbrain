@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Layers, Globe, Disc3, Cloud, Share2, BrainCircuit,
+  LayoutDashboard, Layers, Globe, Disc3, Cloud, Share2, BrainCircuit, Cable,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { getIcon } from '../icons'
@@ -22,6 +22,8 @@ export default function Sidebar() {
   const enterDrill = useStore((s) => s.enterDrill)
   const exitDrill = useStore((s) => s.exitDrill)
   const dataSource = useStore((s) => s.dataSource)
+  const systemPage = useStore((s) => s.systemPage)
+  const setSystemPage = useStore((s) => s.setSystemPage)
   const noteCount = useStore((s) => s.rawNotes.length)
 
   // echte Cluster (aus der Landkarte) als Sprungziele
@@ -44,7 +46,7 @@ export default function Sidebar() {
         <div className="mb-5">
           <div className="eyebrow px-3 pb-2">Navigation</div>
           <ul className="space-y-0.5">
-            <NavButton label="Übersicht" icon={LayoutDashboard} on={!drill} onClick={exitDrill} />
+            <NavButton label="Übersicht" icon={LayoutDashboard} on={!drill && !systemPage} onClick={exitDrill} />
             {clusters.map((c) => {
               const Icon = getIcon(c.icon)
               const on = drill === c.folder
@@ -71,7 +73,7 @@ export default function Sidebar() {
           <div className="eyebrow px-3 pb-2">Ansichten</div>
           <ul className="space-y-0.5">
             {VIEWS.map(({ label, key, icon: Icon }) => {
-              const on = view === key
+              const on = view === key && !systemPage
               return (
                 <li key={key}>
                   <button onClick={() => setSetting('view', key)} className={rowCls(on)}>
@@ -82,6 +84,14 @@ export default function Sidebar() {
                 </li>
               )
             })}
+          </ul>
+        </div>
+        {/* System — nicht die Notizen, sondern das Drumherum */}
+        <div className="mb-2">
+          <div className="eyebrow px-3 pb-2">System</div>
+          <ul className="space-y-0.5">
+            <NavButton label="Verbindungen" icon={Cable} on={systemPage === 'verbindungen'}
+              onClick={() => setSystemPage(systemPage === 'verbindungen' ? null : 'verbindungen')} />
           </ul>
         </div>
       </nav>

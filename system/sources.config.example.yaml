@@ -3,6 +3,10 @@
 # WICHTIG: Tokens/Passwörter NICHT hier eintragen — nur den Namen der Umgebungsvariable
 #          (auth_env). Den eigentlichen Token setzt du als Umgebungsvariable.
 # sources.config.yaml gehört NICHT ins Versionsmanagement.
+#
+# Maschinenlesbar steht dieselbe Deklaration in _system/scripts/lib.mjs (SOURCES) — daraus
+# baut der Indexlauf integrations.json für die Ansicht „Verbindungen". Kommt eine Quelle
+# dazu, gehört sie in BEIDE Dateien.
 
 sources:
   memos:
@@ -10,6 +14,7 @@ sources:
     base_url: "http://<NAS-HOST>:5230"     # anpassen
     auth_env: MEMOS_TOKEN
     export: api                            # api | db | manual
+    sync: auto                             # auto | manuell | keiner | push
 
   trilium:
     type: trilium

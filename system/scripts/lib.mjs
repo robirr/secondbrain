@@ -8,11 +8,46 @@ export const ROOT = join(HERE, '..', '..'); // Second-Brain-Wurzel
 const SYSTEM = join(HERE, '..');            // _system
 
 // Maschinen-Konfig der Quellen (spiegelt _system/sources.config.yaml).
+// Die Konnektoren brauchen nur base_url/auth_env. Die übrigen Felder BESCHREIBEN die
+// Verbindung für die Ansicht „Verbindungen" — sie sind die erklärte Absicht.
+// Was davon wirklich gilt (Skript vorhanden? Token gesetzt? Notizen im Bestand?),
+// misst integrations.mjs beim Indexlauf und stellt es daneben.
 export const SOURCES = {
-  memos:    { base_url: 'http://<NAS-IP>:5230',  auth_env: 'MEMOS_TOKEN' },
-  trilium:  { base_url: 'http://<NAS-IP>:54321', auth_env: 'TRILIUM_ETAPI_TOKEN' },
-  karakeep: { base_url: 'http://<NAS-IP>:3000',  auth_env: 'KARAKEEP_TOKEN' },
-  tududi:   { base_url: 'http://<NAS-IP>:3002',  auth_env: 'TUDUDI_TOKEN' },
+  memos: {
+    label: 'Memos', type: 'memos', mode: 'pull',
+    base_url: 'http://192.168.1.20:5230', auth_env: 'MEMOS_TOKEN',
+    transport: 'REST-API v1', format: 'Markdown (nativ)', scope: 'alle Notizen',
+    script: 'pull-memos.mjs', sync: 'auto',
+    note: 'Markdown-native API — der Inhalt wird unverändert übernommen.',
+  },
+  trilium: {
+    label: 'Trilium', type: 'trilium', mode: 'pull',
+    base_url: 'http://192.168.1.20:54321', auth_env: 'TRILIUM_ETAPI_TOKEN',
+    transport: 'ETAPI', format: 'intern → Export nach .md', scope: 'hierarchische Notizen',
+    script: 'pull_trilium.py', sync: 'manuell',
+    note: 'Absichtlich NICHT im automatischen Abgleich: ein Bulk-Export würde die Re-Clusterung überschreiben.',
+  },
+  karakeep: {
+    label: 'Karakeep', type: 'karakeep', mode: 'pull',
+    base_url: 'http://192.168.1.20:3000', auth_env: 'KARAKEEP_TOKEN',
+    transport: 'REST-API', format: 'JSON (+ Inhalt)', scope: 'nur Notizen/Highlights',
+    script: null, sync: 'keiner',
+    note: 'Konnektor nie gebaut — konfiguriert, aber noch nie etwas geholt.',
+  },
+  tududi: {
+    label: 'tududi', type: 'tududi', mode: 'pull',
+    base_url: 'http://192.168.1.20:3002', auth_env: 'TUDUDI_TOKEN',
+    transport: 'REST-API', format: 'JSON', scope: 'nur Notizen, keine To-dos',
+    script: 'pull-tududi.mjs', sync: 'auto',
+    note: 'To-dos bleiben aussen vor — das Brain ist für Wissen, nicht für Aufgaben.',
+  },
+  hermes: {
+    label: 'Hermes Agent', type: 'hermes-agent', mode: 'push',
+    base_url: 'http://192.168.1.17', auth_env: 'CAPTURE_TOKEN',
+    transport: 'HTTP-Endpoint (Port aus CAPTURE_PORT)', format: 'Markdown', scope: 'auf Zuruf',
+    script: 'capture-server.mjs', sync: 'push', target: '00-Inbox',
+    note: 'Kein Pull: der Agent legt .md in die Inbox. Ablage-Mechanik noch nicht fertig entworfen (A5).',
+  },
 };
 
 // Liest _system/.env (KEY=VALUE, eine Zeile je Eintrag).

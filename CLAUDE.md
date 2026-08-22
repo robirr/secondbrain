@@ -2,7 +2,7 @@
 
 Dies ist Romans **Second Brain**: ~222 Markdown-Notizen, konsolidiert aus mehreren Quellen
 (Memos, Trilium, tududi). **Markdown ist die einzige Wahrheit.** Abgeleitete Sichten
-(`INDEX.md`, `graph.json`, `.qmd/`) sind jederzeit neu baubar und wegwerfbar.
+(`INDEX.md`, `graph.json`, `integrations.json`, `.qmd/`) sind jederzeit neu baubar und wegwerfbar.
 
 ## Brain-First — die Suchleiter (bei JEDER Wissensfrage, in dieser Reihenfolge)
 
@@ -25,7 +25,7 @@ Dies ist Romans **Second Brain**: ~222 Markdown-Notizen, konsolidiert aus mehrer
 - MCP-Server `qmd` stellt die Tools `query`, `get`, `multi_get`, `status` bereit. Collection: **brain**.
 - Läuft komplett **lokal** (kleine Modelle in `~/.cache/qmd/`), keine Cloud, keine API-Kosten.
 - **Nach Änderungen am Bestand** neu ableiten:
-  `node _system/scripts/build-index.mjs`  (Katalog + Landkarte) und  `qmd update`  (Index).
+  `node _system/scripts/build-index.mjs`  (Katalog + Landkarte + Verbindungen) und  `qmd update`  (Index).
   Neue/veränderte Inhalte danach mit `qmd embed` einbetten.
 
 ## 09-Wiki (verdichtete Schicht — Phase C2/C3, noch nicht aktiv)

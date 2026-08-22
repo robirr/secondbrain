@@ -5,6 +5,7 @@ import Topbar from './components/Topbar'
 import RightPanel from './components/RightPanel'
 import ViewSwitcher from './components/ViewSwitcher'
 import NotePanel from './components/NotePanel'
+import ConnectionsPage from './components/ConnectionsPage'
 import { clusterMeta } from './data/load'
 import { useVisibleNotes } from './display'
 import { useStore } from './store'
@@ -12,6 +13,7 @@ import { ChevronLeft, Layers as LayersIcon } from 'lucide-react'
 
 export default function App() {
   const loadData = useStore((s) => s.loadData)
+  const systemPage = useStore((s) => s.systemPage)
   useEffect(() => { loadData() }, [loadData])
   return (
     <div className="relative flex h-screen w-screen overflow-hidden text-ink">
@@ -24,13 +26,18 @@ export default function App() {
       <main className="relative z-10 flex min-w-0 flex-1 flex-col">
         <Topbar />
         <section className="relative flex-1 overflow-hidden">
-          <ViewSwitcher />
-          <DrillBar />
-          <Legend />
+          {systemPage === 'verbindungen' ? <ConnectionsPage /> : (
+            <>
+              <ViewSwitcher />
+              <DrillBar />
+              <Legend />
+            </>
+          )}
         </section>
       </main>
 
-      <RightPanel />
+      {/* Die Einstellungsleiste regelt die Visualisierung — auf der Systemseite hätte sie nichts zu tun. */}
+      {!systemPage && <RightPanel />}
       <NotePanel />
     </div>
   )
