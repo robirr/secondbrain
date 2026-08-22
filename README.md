@@ -11,7 +11,7 @@ Bedeutungssuche (qmd), eine KI-gepflegte Wiki-Schicht (markiert Widersprüche st
 | Ort | Inhalt |
 |-----|--------|
 | Wurzel (`src/`, `package.json`, `Dockerfile`, `docker-compose.yml`, `nginx.conf.template`) | **Visualisierungs-App** (React + TS + Tailwind + Three.js) |
-| `system/scripts/` | **Pipeline** ohne Geheimnisse: Indexer (`build-index.mjs`), Konnektoren (`pull-*.mjs`, `pull_trilium.py`), Abgleich (`sync.mjs`), Capture (`capture*.mjs`) |
+| `system/scripts/` | **Pipeline** ohne Geheimnisse: Indexer (`build-index.mjs`, `integrations.mjs`), Konnektoren (`pull-*.mjs`, `pull_trilium.py`), Abgleich (`sync.mjs`), Capture (`capture*.mjs`). Kommt ins Image und läuft beim Containerstart — **einzige Quelle dieser Skripte, keine Kopie im Vault nötig** |
 | `system/*.example` | Konfig-Vorlagen (Hosts/Tokens werden lokal gesetzt, nie committet) |
 | `docs/SPEZIFIKATION.md` | der „Vertrag" (Ziel, Fähigkeiten, Architektur) |
 | `docs/WIKI-SCHEMA.md` | Regeln der KI-gepflegten Wiki-Schicht |
@@ -41,6 +41,13 @@ cp .env.example .env
 #  SECOND_BRAIN_DATA -> Vault-WURZEL (graph.json + .md-Dateien)   — EINZIGE Pflichtangabe
 docker compose up -d             # zieht das fertige Image -> http://<HOST>:8686
 ```
+**Ableiten passiert im Container.** Beim Start baut der Entrypoint `INDEX.md`, `graph.json` und
+`integrations.json` neu (mit den Skripten aus dem Image) und indexiert danach für qmd. Geschrieben
+werden **genau diese drei Dateien** in die Vault-Wurzel; `.md`-Notizen werden nur gelesen. Dafür ist
+der Vault in `docker-compose.yml` mit `:rw` gemountet — steht dort `:ro`, meldet der Start das und
+lässt alles unverändert. Abschalten: `BRAIN_BUILD_INDEX=0`. Nach `docker compose pull && up -d` ist
+der Stand also aktuell, **ohne dass Skripte von Hand in den Vault kopiert werden**.
+
 **Ein Image, ein Container.** Die App (nginx) **und** die qmd-Bedeutungssuche laufen zusammen im
 selben Container — kein separater qmd-Dienst, kein `host.docker.internal`. qmd wird beim ersten Start
 automatisch eingerichtet: es indexiert den gemounteten Vault und lädt einmalig seine lokalen Modelle
@@ -50,6 +57,8 @@ zu, sobald qmd fertig ist. Ohne gemounteten Vault läuft die App mit Demo-Daten.
 
 ### Daten & Suche
 - Ansichten laden `data/graph.json`, aggregiert nach Cluster; Drilldown zeigt einzelne Notizen.
+- Die Ansicht „Verbindungen" liest `data/integrations.json`: Quellen, Zugangswege, Ablage-Regeln,
+  abgeleitete Dateien, Werkzeuge und der Zustand der Tokens (nur Name + gesetzt/fehlt, nie ein Wert).
 - Lesepanel lädt `data/<cluster>/<datei>.md`.
 - Suche ruft `/qmd/query` → nginx proxyt intern auf das mitlaufende qmd (`127.0.0.1:8181`).
 - Externe Agenten erreichen qmd über denselben Container: MCP unter `http://<HOST>:8686/qmd/mcp`.

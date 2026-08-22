@@ -59,6 +59,7 @@ export interface Integrations {
   secrets: IntSecret[]
   config: IntConfig[]
   secretsFile: string
+  toolsFrom: string // Ordner, aus dem die Werkzeugliste stammt (Vault oder Container)
 }
 
 export type IntLoad =

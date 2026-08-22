@@ -4,8 +4,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-export const ROOT = join(HERE, '..', '..'); // Second-Brain-Wurzel
-const SYSTEM = join(HERE, '..');            // _system
+export const HERE_DIR = HERE;               // wo dieser Code liegt (nicht der Vault!)
+
+// Vault-Wurzel. Normalerweise zwei Ebenen ueber diesem Skript (_system/scripts/..).
+// Im Container liegt der Code aber ausserhalb des Vaults, der unter VAULT gemountet ist —
+// darum die Uebersteuerung. VAULT_ROOT gewinnt (wie in vite.config.ts), dann VAULT.
+export const ROOT = process.env.VAULT_ROOT || process.env.VAULT || join(HERE, '..', '..');
+const SYSTEM = join(ROOT, '_system');       // _system IMMER relativ zur Vault-Wurzel
 
 // Maschinen-Konfig der Quellen (spiegelt _system/sources.config.yaml).
 // Die Konnektoren brauchen nur base_url/auth_env. Die übrigen Felder BESCHREIBEN die

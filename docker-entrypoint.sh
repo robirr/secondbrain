@@ -18,9 +18,42 @@ export NODE_OPTIONS="--dns-result-order=ipv4first${NODE_OPTIONS:+ $NODE_OPTIONS}
 mkdir -p /etc/nginx/conf.d
 envsubst '${QMD_URL}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
 
-# 2) qmd im Hintergrund vorbereiten & starten — blockiert die UI nicht
+# 2) Katalog + Landkarte + Verbindungen ableiten. Schreibt AUSSCHLIESSLICH die drei
+#    Dateien INDEX.md, graph.json und integrations.json in die Vault-Wurzel; .md-Notizen
+#    werden nur gelesen. Abschaltbar mit BRAIN_BUILD_INDEX=0.
+build_index() {
+  if [ "${BRAIN_BUILD_INDEX:-1}" != "1" ]; then
+    echo "[index] abgeschaltet (BRAIN_BUILD_INDEX=0) — vorhandene Dateien bleiben."
+    return
+  fi
+  if [ ! -d "$VAULT" ]; then
+    echo "[index] kein Vault unter $VAULT gemountet — nichts abzuleiten."
+    return
+  fi
+  # Sicherung: sieht der Ordner ueberhaupt wie ein Vault aus? (mindestens ein NN-Cluster)
+  if ! ls -d "$VAULT"/[0-9][0-9]-* >/dev/null 2>&1; then
+    echo "[index] $VAULT enthaelt keinen Cluster-Ordner (NN-Name) — sicherheitshalber nichts geschrieben."
+    return
+  fi
+  if ! touch "$VAULT/.brain-write-probe" 2>/dev/null; then
+    echo "[index] Vault ist read-only gemountet — INDEX.md/graph.json/integrations.json bleiben unveraendert."
+    echo "[index] Fuer automatisches Ableiten in docker-compose.yml den Mount von :ro auf :rw stellen."
+    return
+  fi
+  rm -f "$VAULT/.brain-write-probe"
+  echo "[index] Katalog, Landkarte und Verbindungen ableiten ..."
+  if VAULT_ROOT="$VAULT" node /app/scripts/build-index.mjs; then
+    echo "[index] fertig."
+  else
+    echo "[index] fehlgeschlagen — der alte Stand bleibt liegen."
+  fi
+}
+
+# 3) qmd im Hintergrund vorbereiten & starten — blockiert die UI nicht
 (
   cd "$HOME" 2>/dev/null || true   # relative Index-DB landet dann im persistenten Volume
+
+  build_index                      # erst ableiten, dann indexieren: qmd sieht den neuen Stand
 
   if [ -d "$VAULT" ]; then
     if ! qmd collection list 2>/dev/null | grep -qw brain; then
@@ -48,6 +81,6 @@ envsubst '${QMD_URL}' < /etc/nginx/templates/default.conf.template > /etc/nginx/
   wait "$MCP_PID"
 ) &
 
-# 3) nginx im Vordergrund = Hauptprozess des Containers
+# 4) nginx im Vordergrund = Hauptprozess des Containers
 echo "[app] nginx startet auf :80"
 exec nginx -g 'daemon off;'

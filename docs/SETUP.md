@@ -10,7 +10,8 @@ Dieses Repo enthält alles, um das komplette System nachzubauen: die **Pipeline-
 ## Architektur (5 Bausteine)
 1. **Vault** — deine Notizen als `.md` (einzige Wahrheit). Ordner-Konvention z.B. `00-Inbox`, `01-Daily`,
    `09-Wiki` (KI-gepflegt), `10-Beruf`, `20-Privat`, `40-Ressourcen`, `50-Projekte`, `90-Archiv`.
-2. **Indexer** (`system/scripts/build-index.mjs`, ohne KI) → `INDEX.md` (Katalog) + `graph.json` (Landkarte).
+2. **Indexer** (`system/scripts/build-index.mjs`, ohne KI) → `INDEX.md` (Katalog), `graph.json`
+   (Landkarte) und `integrations.json` (Verbindungen: Quellen, Zugänge, Ablage-Regeln).
 3. **qmd** — lokale Hybridsuche (eigene lokale Modelle, modell-neutral).
 4. **Regelwerk** — `CLAUDE.md` / `AGENTS.md` (Brain-First-Leiter) + Wiki-Schicht (`docs/WIKI-SCHEMA.md`).
 5. **App** — Visualisierung (React/Vite → nginx via Docker).
@@ -24,8 +25,11 @@ Quellen konsolidieren (siehe „Konnektoren").
 
 **2) Indexer**
 ```bash
-node system/scripts/build-index.mjs      # erzeugt INDEX.md + graph.json im Vault
+node system/scripts/build-index.mjs      # erzeugt INDEX.md, graph.json, integrations.json im Vault
 ```
+Läuft der Container (Schritt „Deployment"), macht er das bei jedem Start selbst — dieser Aufruf ist
+dann nur für Zwischenstände von Hand nötig. Andere Vault-Wurzel als zwei Ebenen über dem Skript?
+`VAULT_ROOT=/pfad/zum/vault node system/scripts/build-index.mjs`.
 
 **3) qmd (Suche)**
 ```bash

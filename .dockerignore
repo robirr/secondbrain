@@ -5,8 +5,11 @@ dist
 .vite
 *.log
 .DS_Store
-# nicht ins App-Image: System-Pipeline & Doku
-system
+# nicht ins App-Image: Doku und Konfig-Vorlagen.
+# ACHTUNG: system/scripts MUSS drin bleiben — das Laufzeit-Image kopiert die Skripte
+# nach /app/scripts und leitet damit beim Start ab (siehe Dockerfile, docker-entrypoint.sh).
+system/.env.example
+system/sources.config.example.yaml
 docs
 AGENTS.md
 CLAUDE.md

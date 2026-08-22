@@ -15,9 +15,20 @@ services:
       - "8686:80"          # Host-Port 8686 (frei wählbar) -> Container-Port 80
     environment:
       - TZ=Europe/Zurich
+      # Nur zur ANZEIGE in der Ansicht "Verbindungen": der Pfad des Vaults auf dem NAS.
+      # Im Container heisst er /usr/share/nginx/html/data, das hilft dir dort nicht weiter.
+      - VAULT_HOST_PATH=${SECOND_BRAIN_DATA:-./data}
+      # Ableiten beim Start abschalten (dann bleiben INDEX.md/graph.json/integrations.json
+      # so, wie sie sind):  BRAIN_BUILD_INDEX=0
+      - BRAIN_BUILD_INDEX=${BRAIN_BUILD_INDEX:-1}
     volumes:
-      # (1) Deine Notizen (Vault-WURZEL: graph.json + .md). Read-only — wird nur gelesen.
-      - ${SECOND_BRAIN_DATA:-./data}:/usr/share/nginx/html/data:ro
+      # (1) Deine Notizen (Vault-WURZEL: graph.json + .md).
+      #     BESCHREIBBAR (:rw), weil der Container beim Start den Katalog neu ableitet —
+      #     er schreibt genau drei Dateien in die Wurzel: INDEX.md, graph.json,
+      #     integrations.json. Deine .md-Notizen werden nur gelesen, nie angefasst.
+      #     Lieber unantastbar? Dann :ro setzen — der Start meldet das und laesst alles wie es ist
+      #     (die App zeigt dann den Stand vom letzten Indexlauf auf deinem Rechner).
+      - ${SECOND_BRAIN_DATA:-./data}:/usr/share/nginx/html/data:rw
       # (2) qmd-Zuhause: lokale Modelle + Suchindex. Bleibt über Neustarts erhalten,
       #     damit die ~2-3 GB Modelle nicht jedes Mal neu geladen werden.
       - qmd-home:/qmd-home

@@ -9,9 +9,14 @@
 // (/data/integrations.json), deshalb diese Regel.
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, SOURCES, loadEnv } from './lib.mjs';
+import { ROOT, HERE_DIR, SOURCES, loadEnv } from './lib.mjs';
 
-const SCRIPTS = join(ROOT, '_system', 'scripts');
+// Welche Skript-Sammlung beschreiben wir? Bevorzugt die im Vault — das sind die, die Roman
+// von Hand aufruft (mit seinen Tokens). Liegt dort keine (Indexlauf im Container), dann die
+// mitgelieferte neben diesem Code. Die Ansicht sagt, welche es war.
+const VAULT_SCRIPTS = join(ROOT, '_system', 'scripts');
+const SCRIPTS = existsSync(VAULT_SCRIPTS) ? VAULT_SCRIPTS : HERE_DIR;
+const SCRIPTS_LABEL = SCRIPTS === VAULT_SCRIPTS ? '_system/scripts' : HERE_DIR;
 const NO_CMD = new Set(['lib.mjs', 'integrations.mjs']);   // Bibliotheken, nicht aufrufbar
 const PLAIN_ENV = /_(PORT|HOST)$/;                          // Weissliste für Klartext-Werte
 
@@ -109,11 +114,11 @@ export function buildIntegrations({ notes, edges, clusters }) {
     .map(([name, e]) => ({ name, notes: e.count, newest: e.newest ? stamp(e.newest) : null }))
     .sort((a, b) => b.notes - a.notes);
 
-  const tools = readdirSync(SCRIPTS)
+  const tools = (existsSync(SCRIPTS) ? readdirSync(SCRIPTS) : [])
     .filter(f => /\.(mjs|js|py)$/.test(f))
     .sort()
     .map(file => ({
-      file: '_system/scripts/' + file,
+      file: SCRIPTS_LABEL + '/' + file,
       ...describe(file),
       library: NO_CMD.has(file),
       changed: changed(join(SCRIPTS, file)),
@@ -192,7 +197,7 @@ export function buildIntegrations({ notes, edges, clusters }) {
       command: 'node _system/scripts/capture.mjs "Titel" "Textinhalt" "tag1,tag2"',
     },
     {
-      key: 'vault', name: 'Der Vault selbst', address: ROOT,
+      key: 'vault', name: 'Der Vault selbst', address: process.env.VAULT_HOST_PATH || ROOT,
       what: 'Markdown ist die einzige Wahrheit. Dateien direkt bearbeiten ist erlaubt — danach ableiten (siehe Regel 7).',
       auth: 'Dateisystem', command: null,
     },
@@ -234,7 +239,7 @@ export function buildIntegrations({ notes, edges, clusters }) {
     },
     {
       title: 'Nach jeder Änderung ableiten',
-      text: 'Katalog, Landkarte und diese Bestandsaufnahme entstehen neu; danach den Suchindex nachziehen.',
+      text: 'Katalog, Landkarte und diese Bestandsaufnahme entstehen neu, danach der Suchindex. Der Container macht das bei jedem Start von selbst (docker compose up -d) und schreibt dabei nur diese drei Dateien. Von Hand geht es so:',
       fact: null,
       command: 'node _system/scripts/build-index.mjs && qmd update && qmd embed',
     },
@@ -253,9 +258,12 @@ export function buildIntegrations({ notes, edges, clusters }) {
       edges: edges.length,
       clusters: clusters.length,
       inbox: inboxWaiting,
-      path: ROOT,
+      // Im Container ist ROOT der Mount-Pfad (/usr/share/nginx/html/data) — der Pfad auf dem
+      // Wirt kommt dann per VAULT_HOST_PATH aus docker-compose.yml.
+      path: process.env.VAULT_HOST_PATH || ROOT,
     },
     sources, foreign, tools, derived, secrets, config, access, rules,
+    toolsFrom: SCRIPTS_LABEL,
     secretsFile: '_system/.env',
   };
 }

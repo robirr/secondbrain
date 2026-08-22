@@ -33,6 +33,10 @@ RUN npm i -g --foreground-scripts @tobilu/qmd@2.5.3
 
 # App-Build in den nginx-Ausgabeordner; der Vault wird zur Laufzeit unter data/ gemountet
 COPY --from=build /app/dist /usr/share/nginx/html
+# Die Ableit- und Konnektor-Skripte kommen MIT ins Image. Damit ist der Indexlauf
+# (INDEX.md, graph.json, integrations.json) Teil des Containers und muss nicht in den
+# Vault kopiert werden. Geschrieben wird beim Start -- siehe docker-entrypoint.sh.
+COPY system/scripts /app/scripts
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh

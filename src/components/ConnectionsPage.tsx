@@ -262,7 +262,7 @@ export default function ConnectionsPage() {
           ))}
         </Section>
 
-        <Section icon={Wrench} title="Werkzeuge" hint="Skripte in _system/scripts — Beschreibung und Aufruf aus dem Skript selbst">
+        <Section icon={Wrench} title="Werkzeuge" hint={`Skripte in ${d.toolsFrom} — Beschreibung und Aufruf aus dem Skript selbst`}>
           {d.tools.map((t) => (
             <div key={t.file} className="rounded-xl border border-line bg-white/[0.02] px-4 py-3">
               <div className="flex items-baseline gap-3">
