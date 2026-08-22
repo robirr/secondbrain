@@ -11,7 +11,7 @@ Bedeutungssuche (qmd), eine KI-gepflegte Wiki-Schicht (markiert Widersprüche st
 | Ort | Inhalt |
 |-----|--------|
 | Wurzel (`src/`, `package.json`, `Dockerfile`, `docker-compose.yml`, `nginx.conf.template`) | **Visualisierungs-App** (React + TS + Tailwind + Three.js) |
-| `system/scripts/` | **Pipeline** ohne Geheimnisse: Indexer (`build-index.mjs`, `integrations.mjs`), Konnektoren (`pull-*.mjs`, `pull_trilium.py`), Abgleich (`sync.mjs`), Capture (`capture*.mjs`). Kommt ins Image und läuft beim Containerstart — **einzige Quelle dieser Skripte, keine Kopie im Vault nötig** |
+| `system/scripts/` | **Pipeline** ohne Geheimnisse: Indexer (`build-index.mjs`, `integrations.mjs`), Konnektoren (`pull-*.mjs`, `pull_trilium.py`), Abgleich (`sync.mjs`), Capture (`capture*.mjs`), Vault-Spiegel (`sync-vault.ps1`). Kommt ins Image und läuft beim Containerstart — **einzige Quelle dieser Skripte, keine Kopie im Vault nötig** |
 | `system/*.example` | Konfig-Vorlagen (Hosts/Tokens werden lokal gesetzt, nie committet) |
 | `docs/SPEZIFIKATION.md` | der „Vertrag" (Ziel, Fähigkeiten, Architektur) |
 | `docs/WIKI-SCHEMA.md` | Regeln der KI-gepflegten Wiki-Schicht |
@@ -54,6 +54,17 @@ automatisch eingerichtet: es indexiert den gemounteten Vault und lädt einmalig 
 (~2–3 GB). Diese Modelle **und** der Suchindex liegen im Docker-Volume `qmd-home` und überleben
 Neustarts. **Erster Start dauert daher länger; die UI ist aber sofort da**, die Suche schaltet sich
 zu, sobald qmd fertig ist. Ohne gemounteten Vault läuft die App mit Demo-Daten.
+
+### Notizen auf den NAS spiegeln
+Arbeitest du lokal und liest der Container einen Ordner auf dem NAS, halten `sync-vault.ps1` die
+beiden Kopien gleich — echter Spiegel inklusive Löschungen, aber `_system` und die drei abgeleiteten
+Dateien bleiben unberührt:
+```powershell
+powershell -ExecutionPolicy Bypass -File system/scripts/sync-vault.ps1 -Ziel <Zielordner>
+```
+`-Testlauf` zeigt nur, was passieren würde. Der Lauf verweigert sich bei auffälligem Schwund
+(unter 50 Notizen oder mehr als ein Fünftel Verlust) — `-Erzwingen` übergeht das. Danach leitet er
+im Container neu ab und zieht den Suchindex nach (über SSH, sonst genügt der nächste Containerstart).
 
 ### Daten & Suche
 - Ansichten laden `data/graph.json`, aggregiert nach Cluster; Drilldown zeigt einzelne Notizen.

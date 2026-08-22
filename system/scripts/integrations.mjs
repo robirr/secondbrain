@@ -131,7 +131,7 @@ export function buildIntegrations({ notes, edges, clusters }) {
     .sort((a, b) => b.notes - a.notes);
 
   const tools = (existsSync(SCRIPTS) ? readdirSync(SCRIPTS) : [])
-    .filter(f => /\.(mjs|js|py)$/.test(f))
+    .filter(f => /\.(mjs|js|py|ps1)$/.test(f))
     .sort()
     .map(file => ({
       file: SCRIPTS_LABEL + '/' + file,
@@ -226,6 +226,7 @@ export function buildIntegrations({ notes, edges, clusters }) {
   ];
 
   // --- Regeln fürs Ablegen und Importieren. Erklärt, und wo möglich gemessen. ---
+  const mirrorScript = existsSync(join(SCRIPTS, 'sync-vault.ps1'));
   const rules = [
     {
       title: 'Alles Neue landet in der Inbox',
@@ -264,6 +265,12 @@ export function buildIntegrations({ notes, edges, clusters }) {
       text: 'Katalog, Landkarte und diese Bestandsaufnahme entstehen neu, danach der Suchindex. Der Container macht das bei jedem Start von selbst (docker compose up -d) und schreibt dabei nur diese drei Dateien. Von Hand geht es so:',
       fact: null,
       command: 'node _system/scripts/build-index.mjs && qmd update && qmd embed',
+    },
+    {
+      title: 'Der Bestand liegt zweimal',
+      text: 'Dieser Rechner und der Ordner, den der Container liest, sind zwei Kopien. Der Spiegel gleicht sie ab — ein echter Spiegel, Löschungen inbegriffen, damit auf dem NAS keine Geisternotizen zurückbleiben. Er verweigert sich bei auffälligem Schwund und lässt _system sowie die drei abgeleiteten Dateien unberührt. Danach leitet der Container neu ab und zieht den Suchindex nach.',
+      fact: mirrorScript ? null : 'Spiegel-Skript nicht vorhanden',
+      command: mirrorScript ? 'powershell -ExecutionPolicy Bypass -File _system/scripts/sync-vault.ps1 -Ziel <Zielordner>' : null,
     },
     {
       title: 'Verdichten ins Wiki',
