@@ -1,17 +1,29 @@
 // A5 — Capture-Server (HTTP): Push-Kanal für Hermes o.Ä.
 // POST /capture   Header: X-Capture-Token: <token>   Body (JSON): {title, content, tags?}
 // GET  /health
-// Schreibt nach 00-Inbox/hermes/. Token/Port aus _system/.env (CAPTURE_TOKEN, CAPTURE_PORT, CAPTURE_HOST).
+// Schreibt nach 00-Inbox/hermes/. Token/Port aus _system/.env ODER aus der Umgebung
+// (CAPTURE_TOKEN, CAPTURE_PORT, CAPTURE_HOST) — im Container gibt es keine .env, dort kommen
+// die Werte aus docker-compose.yml. Die Umgebung gewinnt.
 // Start:  node _system/scripts/capture-server.mjs
+//
+// OHNE Token startet der Dienst NICHT. Ein offener Endpunkt liesse jeden im Netz in den Vault
+// schreiben — das ist kein Zustand, den man versehentlich haben will.
 import { createServer } from 'node:http';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadEnv, ROOT, slugify, frontmatter } from './lib.mjs';
 
 const env = loadEnv();
-const TOKEN = env.CAPTURE_TOKEN || '';
-const PORT = parseInt(env.CAPTURE_PORT || '8765', 10);
-const HOST = env.CAPTURE_HOST || '0.0.0.0';
+const wert = name => process.env[name] || env[name] || '';
+const TOKEN = wert('CAPTURE_TOKEN');
+const PORT = parseInt(wert('CAPTURE_PORT') || '8765', 10);
+const HOST = wert('CAPTURE_HOST') || '0.0.0.0';
+
+if (!TOKEN) {
+  console.error('[capture] Kein CAPTURE_TOKEN gesetzt — Dienst startet NICHT.');
+  console.error('[capture] Token in _system/.env oder als Umgebungsvariable setzen.');
+  process.exit(2);
+}
 
 function writeNote({ title, content, tags }) {
   const now = new Date(), iso = now.toISOString();
@@ -43,4 +55,4 @@ createServer((req, res) => {
   }
   json(res, 404, { ok: false, error: 'not found' });
 }).listen(PORT, HOST, () =>
-  console.log(`Capture-Server läuft: http://${HOST}:${PORT}  ·  POST /capture · GET /health · Token: ${TOKEN ? 'gesetzt' : 'KEIN (offen!)'}`));
+  console.log(`[capture] laeuft auf http://${HOST}:${PORT} · POST /capture · GET /health · Ziel: ${join(ROOT, '00-Inbox', 'hermes')}`));

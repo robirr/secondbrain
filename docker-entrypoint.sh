@@ -81,6 +81,21 @@ build_index() {
   wait "$MCP_PID"
 ) &
 
-# 4) nginx im Vordergrund = Hauptprozess des Containers
+# 4) Capture-Server: Push-Kanal fuer Hermes und andere Agenten (POST /capture -> 00-Inbox/hermes).
+#    Startet NUR mit gesetztem CAPTURE_TOKEN -- ein offener Endpunkt liesse jeden im Netz in den
+#    Vault schreiben. Und nur, wenn der Vault beschreibbar ist; bei :ro waere er sinnlos.
+if [ -n "${CAPTURE_TOKEN:-}" ]; then
+  if touch "$VAULT/.brain-write-probe" 2>/dev/null; then
+    rm -f "$VAULT/.brain-write-probe"
+    echo "[capture] starte Push-Kanal auf Port ${CAPTURE_PORT:-8765}"
+    ( VAULT_ROOT="$VAULT" node /app/scripts/capture-server.mjs & )
+  else
+    echo "[capture] Vault ist read-only gemountet - Push-Kanal nicht gestartet."
+  fi
+else
+  echo "[capture] kein CAPTURE_TOKEN gesetzt - Push-Kanal bleibt aus (so gewollt, siehe docker-compose.yml)."
+fi
+
+# 5) nginx im Vordergrund = Hauptprozess des Containers
 echo "[app] nginx startet auf :80"
 exec nginx -g 'daemon off;'

@@ -51,10 +51,11 @@ export const SOURCES = {
     label: 'Hermes Agent', type: 'hermes-agent', mode: 'push',
     base_url: 'http://192.168.1.20', auth_env: 'CAPTURE_TOKEN',
     transport: 'HTTP-Endpoint (Port aus CAPTURE_PORT)', format: 'Markdown', scope: 'auf Zuruf',
-    script: 'capture-server.mjs', sync: 'push', target: '00-Inbox',
+    script: 'capture-server.mjs', sync: 'push', target: '00-Inbox/hermes',
     // Gemessen am 23.08.2026: der Kanal ist eingerichtet, aber nicht benutzbar.
-    blocked: 'Capture-Server läuft nicht, und der Vault ist im Hermes-Container nicht '
-      + 'gemountet — Hermes kann lesen, aber nichts ablegen.',
+    blocked: 'Der Vault ist im Hermes-Container nicht gemountet, und der Capture-Server war am '
+      + '23.08.2026 nirgends erreichbar. Lesen kann Hermes über qmd/MCP; ablegen erst, wenn '
+      + 'CAPTURE_TOKEN in der NAS-.env steht (Port 8765) oder der Vault gemountet wird.',
     note: 'Kein Pull: der Agent legt .md in die Inbox. Läuft als Container Hermes-Agent auf dem NAS '
       + '(nicht .17, wie früher notiert). Der Vault ist dort NICHT gemountet und der Capture-Server '
       + 'läuft derzeit nicht — Hermes kann also lesen (qmd/MCP), aber nichts ablegen. Rolle und '

@@ -13,6 +13,9 @@ services:
     container_name: second-brain
     ports:
       - "8686:80"          # Host-Port 8686 (frei wählbar) -> Container-Port 80
+      # Push-Kanal: hier legen Agenten (z.B. Hermes) neue Notizen in 00-Inbox/hermes ab.
+      # Nur aktiv, wenn CAPTURE_TOKEN gesetzt ist (siehe unten).
+      - "8765:8765"
     environment:
       - TZ=Europe/Zurich
       # Nur zur ANZEIGE in der Ansicht "Verbindungen": der Pfad des Vaults auf dem NAS.
@@ -21,6 +24,11 @@ services:
       # Ableiten beim Start abschalten (dann bleiben INDEX.md/graph.json/integrations.json
       # so, wie sie sind):  BRAIN_BUILD_INDEX=0
       - BRAIN_BUILD_INDEX=${BRAIN_BUILD_INDEX:-1}
+      # Push-Kanal (POST :8765/capture, Kopfzeile X-Capture-Token). OHNE Token startet er nicht —
+      # das ist Absicht: ein offener Endpunkt liesse jeden im Netz in den Vault schreiben.
+      # Den Wert in die .env NEBEN dieser Datei schreiben, nicht hierher:  CAPTURE_TOKEN=...
+      - CAPTURE_TOKEN=${CAPTURE_TOKEN:-}
+      - CAPTURE_PORT=${CAPTURE_PORT:-8765}
     volumes:
       # (1) Deine Notizen (Vault-WURZEL: graph.json + .md).
       #     BESCHREIBBAR (:rw), weil der Container beim Start den Katalog neu ableitet —
