@@ -4,6 +4,9 @@
 # Echter Spiegel (robocopy /MIR): Geloeschtes und Umbenanntes verschwindet auch am Ziel, sonst
 # sammeln sich dort Geisternotizen, die in Suche und Ansicht auftauchen.
 #
+# 00-Inbox laeuft in BEIDE Richtungen: erst wird geholt, was der Hermes-Agent am Ziel abgelegt
+# hat, dann gespiegelt. Ohne diesen Schritt loescht /MIR jede Zustellung wieder weg.
+#
 # NIE angefasst: _system (Tokens!), Punktordner (.git, .claude, .qmd, node_modules) und die drei
 # abgeleiteten Dateien INDEX.md, graph.json, integrations.json - die baut der Container selbst.
 #
@@ -55,6 +58,43 @@ function Notizen($pfad) {
 if (-not (Test-Path -LiteralPath $Quelle)) { Write-Host "Quelle nicht gefunden: $Quelle" -ForegroundColor Red; exit 2 }
 if (-not (Test-Path -LiteralPath $Ziel))   { Write-Host "Ziel nicht erreichbar: $Ziel" -ForegroundColor Red; exit 2 }
 
+# --- Einholen: was der Push-Kanal auf der NAS abgelegt hat, zuerst hierher ---------------------
+# Der Spiegel unten ist ein /MIR: er loescht am Ziel alles, was hier nicht existiert. Notizen, die
+# Hermes ueber den Capture-Kanal direkt in die NAS-Inbox legt, wuerden damit vernichtet, bevor sie
+# jemand gesehen hat - am 23.08.2026 genau so passiert, die Testnotiz war nach neun Sekunden weg.
+# Darum werden diese Ordner VOR dem Spiegeln in die Gegenrichtung geholt: kopieren, nie loeschen.
+$EinholOrdner = @('00-Inbox\hermes')
+$eingeholt = 0
+foreach ($ordner in $EinholOrdner) {
+  $von = Join-Path $Ziel $ordner
+  if (-not (Test-Path -LiteralPath $von)) { continue }
+  $nach = Join-Path $Quelle $ordner
+  $neue = @()
+  foreach ($d in (Get-ChildItem -LiteralPath $von -Recurse -File -ErrorAction SilentlyContinue)) {
+    $rel = $d.FullName.Substring($von.Length).TrimStart('\')
+    if (-not (Test-Path -LiteralPath (Join-Path $nach $rel))) { $neue += $rel }
+  }
+  if ($neue.Count -eq 0) { continue }
+  if ($Testlauf) {
+    Write-Host "Testlauf: $($neue.Count) Datei(en) wuerden aus $ordner eingeholt." -ForegroundColor Cyan
+    foreach ($rel in $neue) { Write-Host "  wuerde einholen: $ordner\$rel" -ForegroundColor Cyan }
+    continue
+  }
+  if (-not (Test-Path -LiteralPath $nach)) { New-Item -ItemType Directory -Path $nach -Force | Out-Null }
+  # /XC /XN /XO: nur holen, was hier FEHLT. Ohne diese drei wuerde robocopy auch bestehende
+  # Notizen mit der Fassung vom Ziel ueberschreiben - der Rueckkanal darf nur ergaenzen.
+  $null = & robocopy $von $nach '/E' '/XC' '/XN' '/XO' '/FFT' '/R:2' '/W:5' '/NP' '/NDL' '/NJH' '/NFL'
+  if ($LASTEXITCODE -ge 8) {
+    Write-Host "Abbruch: Einholen aus $ordner fehlgeschlagen (robocopy $LASTEXITCODE)." -ForegroundColor Red
+    Write-Host 'Ohne diesen Schritt wuerde der Spiegel die Notizen dort loeschen.' -ForegroundColor Yellow
+    exit 4
+  }
+  foreach ($rel in $neue) { Write-Host "  eingeholt: $ordner\$rel" -ForegroundColor Green }
+  $eingeholt += $neue.Count
+}
+if ($eingeholt -gt 0) {
+  Write-Host "$eingeholt Notiz(en) vom Push-Kanal eingeholt - sie ueberleben den Spiegel."
+}
 $quellZahl = Notizen $Quelle
 $zielZahl  = Notizen $Ziel
 Write-Host "Quelle: $Quelle  ($quellZahl Notizen)"
@@ -76,7 +116,10 @@ if ($zielZahl -gt 0) {
 }
 
 # --- Spiegeln ---
-$argumente = @($Quelle, $Ziel, '/MIR', '/FFT', '/R:2', '/W:5', '/NP', '/NDL', '/NJH')
+# /DCOPY:T = nur Zeitstempel der Ordner uebernehmen, KEINE Attribute. Ordner, die der Container
+# als root angelegt hat (00-Inbox/hermes), lassen ihre Attribute ueber die Freigabe nicht aendern:
+# robocopy meldete dort FEHLER 5 Zugriff verweigert, obwohl alle Dateien fehlerfrei durchgingen.
+$argumente = @($Quelle, $Ziel, '/MIR', '/FFT', '/DCOPY:T', '/R:2', '/W:5', '/NP', '/NDL', '/NJH')
 foreach ($d in $AusOrdner)  { $argumente += '/XD'; $argumente += $d }
 foreach ($f in $AusDateien) { $argumente += '/XF'; $argumente += $f }
 if ($Testlauf) { $argumente += '/L' }
@@ -102,6 +145,33 @@ if ($was.Count -eq 0) { $was += 'nichts zu tun' }
 Write-Host ("Spiegel fertig: " + ($was -join ', ') + " (Code $code)") -ForegroundColor Green
 
 if ($Testlauf) { exit 0 }
+
+# --- Nachpruefung: hat der Spiegel wirklich gespiegelt? -----------------------------------------
+# Dem Rueckgabewert allein ist nicht zu trauen. Am 23.08.2026 meldete robocopy Code 0 ("nichts zu
+# tun") und liess dabei eine Datei am Ziel stehen, die es hier nicht mehr gab - der root-eigene
+# Ordner 00-Inbox/hermes laesst ueber die Freigabe kein Loeschen zu. Wer nur den Code liest, haelt
+# einen auseinandergelaufenen Spiegel fuer erledigt; beim naechsten Lauf holt der Rueckkanal die
+# Datei sogar wieder her. Darum wird das Ergebnis nachgezaehlt, nicht geglaubt.
+$relQuelle = @{}
+Get-ChildItem -LiteralPath $Quelle -Recurse -File -Filter *.md -ErrorAction SilentlyContinue |
+  Where-Object { $_.FullName -notmatch $AusMuster } |
+  ForEach-Object { $relQuelle[$_.FullName.Substring($Quelle.Length).TrimStart('\')] = $true }
+$ueberzaehlig = @()
+Get-ChildItem -LiteralPath $Ziel -Recurse -File -Filter *.md -ErrorAction SilentlyContinue |
+  Where-Object { $_.FullName -notmatch $AusMuster } |
+  ForEach-Object {
+    $rel = $_.FullName.Substring($Ziel.Length).TrimStart('\')
+    if (-not $relQuelle.ContainsKey($rel)) { $ueberzaehlig += $rel }
+  }
+if ($ueberzaehlig.Count -gt 0) {
+  Write-Host "ACHTUNG: $($ueberzaehlig.Count) Notiz(en) liegen noch am Ziel, die es hier nicht gibt:" -ForegroundColor Red
+  $ueberzaehlig | Select-Object -First 10 | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+  Write-Host 'Der Spiegel konnte sie nicht entfernen - meist fehlt der Freigabe das Schreibrecht auf' -ForegroundColor Yellow
+  Write-Host 'dem Ordner, den der Container als root angelegt hat. Auf dem NAS einmalig:' -ForegroundColor Yellow
+  Write-Host '  chown -R nobody:users <vault>/00-Inbox/hermes; chmod 777 <vault>/00-Inbox/hermes' -ForegroundColor Yellow
+} else {
+  Write-Host 'Nachpruefung: am Ziel liegt keine Notiz, die es hier nicht gibt.' -ForegroundColor DarkGray
+}
 
 # --- Lokalen Suchindex nachziehen ---------------------------------------------------------------
 # Auf dem NAS pflegt der Container den Index, lokal pflegte ihn NIEMAND: am 23.08.2026 war der

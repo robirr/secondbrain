@@ -52,14 +52,13 @@ export const SOURCES = {
     base_url: 'http://192.168.1.20', auth_env: 'CAPTURE_TOKEN',
     transport: 'HTTP-Endpoint (Port aus CAPTURE_PORT)', format: 'Markdown', scope: 'auf Zuruf',
     script: 'capture-server.mjs', sync: 'push', target: '00-Inbox/hermes',
-    // Gemessen am 23.08.2026: der Kanal ist eingerichtet, aber nicht benutzbar.
-    blocked: 'Der Vault ist im Hermes-Container nicht gemountet, und der Capture-Server war am '
-      + '23.08.2026 nirgends erreichbar. Lesen kann Hermes über qmd/MCP; ablegen erst, wenn '
-      + 'CAPTURE_TOKEN in der NAS-.env steht (Port 8765) oder der Vault gemountet wird.',
-    note: 'Kein Pull: der Agent legt .md in die Inbox. Läuft als Container Hermes-Agent auf dem NAS '
-      + '(nicht .17, wie früher notiert). Der Vault ist dort NICHT gemountet und der Capture-Server '
-      + 'läuft derzeit nicht — Hermes kann also lesen (qmd/MCP), aber nichts ablegen. Rolle und '
-      + 'Grenzen als Admin: _system/HERMES-ADMIN.md',
+    note: 'Kein Pull: der Agent legt .md selbst in die Inbox. Läuft als Container Hermes-Agent auf '
+      + 'dem NAS (nicht .17, wie früher notiert), Ports 8642/8644/9119. **Der Kanal liefert seit '
+      + 'dem 23.08.2026**: um 22:21 wurde der Vault dort rw eingehängt (/opt/data/brain), um 22:30 '
+      + 'kam die erste Notiz an. Zwei Dinge dazu: der Spiegel holt Zustellungen VOR dem /MIR '
+      + 'herunter (sonst löscht er sie weg), und Hermes schreibt als root mit 755 — solange der '
+      + 'Ordner 00-Inbox/hermes nicht für die Freigabe geöffnet ist, kann Windows dort nichts '
+      + 'aufräumen. Rolle und Grenzen als Admin: _system/HERMES-ADMIN.md',
   },
 };
 
