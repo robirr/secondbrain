@@ -2,7 +2,7 @@
 // Enthält bewusst keine Geheimnisse — nur Variablennamen und gesetzt/fehlt.
 import { useEffect, useState } from 'react'
 
-export type SourceState = 'liefert' | 'bereit' | 'übersprungen' | 'nicht gebaut' | 'kein Token'
+export type SourceState = 'liefert' | 'bereit' | 'blockiert' | 'übersprungen' | 'nicht gebaut' | 'kein Token'
 
 // 'unbekannt' = in diesem Vault liegt keine _system/.env (z. B. beim Lauf im Container).
 // Dann behauptet die Ansicht nichts, statt „fehlt" zu melden.
@@ -29,6 +29,7 @@ export interface IntSource {
   newest: string | null
   tracked_ids: number
   skipped: boolean // bewusst nicht angebunden (Entscheidung, kein Versäumnis)
+  blocked: string | null // eingerichtet, aber nachweislich nicht benutzbar — mit Grund
   state: SourceState
 }
 

@@ -63,11 +63,13 @@ function describe(file) {
 // Zustand einer Quelle — gemessen, nicht behauptet. tokenState: gesetzt | fehlt | unbekannt
 // ('unbekannt' heisst: in diesem Vault liegt keine .env — z.B. beim Lauf im Container. Dann
 // darf hier NICHT 'kein Token' stehen, das waere eine Behauptung ueber etwas Ungesehenes.)
-function stateOf(count, tokenState, scriptOk, skipped) {
+function stateOf(count, tokenState, scriptOk, skipped, blocked) {
   if (count > 0) return 'liefert';
   // Eine Quelle, die bewusst nicht angebunden wurde, ist kein Versäumnis.
   if (skipped) return 'übersprungen';
   if (!scriptOk) return 'nicht gebaut';
+  // Eingerichtet, aber nachweislich nicht benutzbar — das ist nicht dasselbe wie „bereit".
+  if (blocked) return 'blockiert';
   if (tokenState === 'fehlt') return 'kein Token';
   return 'bereit';
 }
@@ -121,7 +123,8 @@ export function buildIntegrations({ notes, edges, clusters }) {
       newest: found.newest ? stamp(found.newest) : null,
       tracked_ids: (state.sources?.[key]?.ids || []).length,
       skipped: Boolean(s.skipped),
-      state: stateOf(found.count, tokenState(s.auth_env), scriptOk, s.skipped),
+      blocked: s.blocked || null,
+      state: stateOf(found.count, tokenState(s.auth_env), scriptOk, s.skipped, s.blocked),
     };
   }).sort((a, b) => (a.mode === b.mode ? b.notes - a.notes : a.mode === 'pull' ? -1 : 1));
 

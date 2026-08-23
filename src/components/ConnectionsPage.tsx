@@ -20,6 +20,7 @@ const TOKEN_COLOR: Record<TokenState, string> = {
 const STATE_COLOR: Record<SourceState, string> = {
   liefert: 'var(--color-c-beruf)',
   bereit: 'var(--color-c-projekte)',
+  blockiert: 'var(--color-c-gesundheit)',   // eingerichtet, aber nicht benutzbar
   'übersprungen': 'var(--color-faint)',   // Entscheidung, kein Mangel — daher kein Warnton
   'nicht gebaut': 'var(--color-c-finanzen)',
   'kein Token': 'var(--color-c-gesundheit)',
@@ -134,11 +135,20 @@ function SourceRow({ s, total }: { s: IntSource; total: number }) {
       </div>
 
       <p className="mt-3 text-[12.5px] leading-relaxed text-muted">{s.note}</p>
-      {/* Warnen nur, wo wirklich etwas fehlt. Bei einer bewussten Entscheidung steht der
-          Grund schon im Text darüber — dort wäre ein Warndreieck eine Falschmeldung. */}
+      {/* Ein eingerichteter, aber nicht benutzbarer Kanal muss das sagen — sonst liest sich
+          „bereit" wie eine Zusage. Der Befehl bleibt daneben stehen: er ist der Weg zurück. */}
+      {s.blocked && (
+        <div className="mt-2.5 flex items-start gap-2 rounded-lg border border-dashed px-3 py-2 text-[12px]"
+          style={{ borderColor: 'var(--color-c-gesundheit)', color: 'var(--color-c-gesundheit)' }}>
+          <TriangleAlert size={13} className="mt-[2px] shrink-0" />
+          <span>{s.blocked}</span>
+        </div>
+      )}
+      {/* Warnen nur, wo wirklich etwas fehlt: bei einer bewussten Entscheidung oder einem
+          benannten Hindernis steht der Grund schon darüber. */}
       {s.command
         ? <Cmd text={s.command} />
-        : !s.skipped && (
+        : !s.skipped && !s.blocked && (
           <div className="mt-2.5 flex items-center gap-2 rounded-lg border border-dashed border-line px-3 py-2 text-[12px] text-faint">
             <TriangleAlert size={13} /> Kein Konnektor vorhanden — diese Quelle kann derzeit nicht geholt werden.
           </div>
