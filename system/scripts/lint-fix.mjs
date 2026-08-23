@@ -79,10 +79,15 @@ const VERWEISE = [
 ];
 
 // Relativer, prozentkodierter Pfad von der Notiz zum Verzeichnis.
+// encodeURIComponent laesst Klammern stehen — in einem Markdown-Linkziel ist eine unbalancierte
+// Klammer nach CommonMark ungueltig und der Link rendert nicht. Darum zusaetzlich %28/%29.
 function zielPfad(vonRel) {
   const tiefe = vonRel.split('/').length - 1;
   const hinauf = '../'.repeat(tiefe);
-  return hinauf + ECHTES_VERZEICHNIS.split('/').map(encodeURIComponent).join('/');
+  const pfad = ECHTES_VERZEICHNIS.split('/')
+    .map(t => encodeURIComponent(t).replace(/\(/g, '%28').replace(/\)/g, '%29'))
+    .join('/');
+  return hinauf + pfad;
 }
 
 if (machen('verweise')) {
@@ -95,7 +100,11 @@ if (machen('verweise')) {
     if (!existsSync(p(rel))) { zeile('!', 'fehlt: ' + rel); verweigert++; continue; }
     const alt = lies(rel);
     // [Text](irgendwas/contacts/directory.md#anker)  ->  [Text](<neuer Pfad>)
-    const neu = alt.replace(/\(([^)]*contacts\/directory\.md)(#[^)]*)?\)/g, () => '(' + zielPfad(rel) + ')');
+    // Ziel UND Beschriftung: ein Link, der weiter "contacts/directory.md" heisst, nennt eine
+    // Datei, die es nicht gibt — der Leser sucht sie dann.
+    const neu = alt
+      .replace(/\[contacts\/directory\.md\]\([^)]*\)/g, '[Kontakte Verzeichnis](' + zielPfad(rel) + ')')
+      .replace(/\(([^)]*contacts\/directory\.md)(#[^)]*)?\)/g, () => '(' + zielPfad(rel) + ')');
     if (neu === alt) { zeile('-', 'kein Treffer: ' + rel); continue; }
     if (APPLY) { writeFileSync(p(rel), neu, 'utf8'); getan++; zeile('x', 'Verweis gesetzt: ' + rel); }
     else zeile('~', 'wuerde umbiegen: ' + rel);
