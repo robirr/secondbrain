@@ -55,10 +55,11 @@ export const SOURCES = {
     note: 'Kein Pull: der Agent legt .md selbst in die Inbox. Läuft als Container Hermes-Agent auf '
       + 'dem NAS (nicht .17, wie früher notiert), Ports 8642/8644/9119. **Der Kanal liefert seit '
       + 'dem 23.08.2026**: um 22:21 wurde der Vault dort rw eingehängt (/opt/data/brain), um 22:30 '
-      + 'kam die erste Notiz an. Zwei Dinge dazu: der Spiegel holt Zustellungen VOR dem /MIR '
-      + 'herunter (sonst löscht er sie weg), und Hermes schreibt als root mit 755 — solange der '
-      + 'Ordner 00-Inbox/hermes nicht für die Freigabe geöffnet ist, kann Windows dort nichts '
-      + 'aufräumen. Rolle und Grenzen als Admin: _system/HERMES-ADMIN.md',
+      + 'kam die erste Notiz an. Zwei Wege stehen offen: der Capture-Endpunkt auf Port 8765 '
+      + '(Token-Pflicht) und das direkte Schreiben über den Mount. Beide sind am 23.08.2026 '
+      + 'geprüft. Der Spiegel holt Zustellungen VOR dem /MIR herunter — sonst löscht er sie weg — '
+      + 'und zieht die Rechte gerade, weil Hermes als root schreibt. '
+      + 'Rolle und Grenzen als Admin: _system/HERMES-ADMIN.md',
   },
 };
 
