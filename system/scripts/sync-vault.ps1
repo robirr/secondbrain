@@ -108,6 +108,20 @@ if (-not $?) {
   Write-Host 'Nachziehen nicht moeglich (SSH/Docker). Der naechste Containerstart leitet ohnehin ab.' -ForegroundColor Yellow
   exit 0
 }
-Write-Host 'Suchindex nachziehen ...'
+Write-Host 'Suchindex nachziehen (Stichwortsuche sofort) ...'
 ssh -o BatchMode=yes -o ConnectTimeout=10 $NasHost 'docker exec -w /qmd-home second-brain qmd update'
+
+# Ohne diesen Schritt bleibt die BEDEUTUNGSsuche blind fuer alles Neue: qmd update pflegt nur den
+# Stichwortindex, die Vektoren entstehen erst bei embed. Laeuft abgekoppelt weiter (-d), weil es
+# je nach Menge Minuten dauert - die Stichwortsuche funktioniert in der Zwischenzeit schon.
+#
+# Erst pruefen, ob schon ein Lauf aktiv ist: zwei gleichzeitige embed-Prozesse blockieren sich am
+# selben SQLite-Index und bleiben stehen (am 23.08.2026 genau so passiert). Ein abgebrochener
+# SSH-Aufruf beendet den Prozess IM Container nicht - er laeuft dort weiter.
+Write-Host 'Einbettungen im Hintergrund nachziehen (Bedeutungssuche folgt) ...'
+$embedBefehl = 'if docker exec second-brain pgrep -f "cli/qmd.js embed" >/dev/null 2>&1; ' +
+  'then echo "embed laeuft schon - nicht neu gestartet"; ' +
+  'else docker exec -d -w /qmd-home second-brain qmd embed && echo "embed gestartet"; fi'
+ssh -o BatchMode=yes -o ConnectTimeout=10 $NasHost $embedBefehl
+Write-Host 'Stand pruefen mit:  ssh unraid "docker exec -w /qmd-home second-brain qmd status"' -ForegroundColor DarkGray
 Write-Host 'Fertig.' -ForegroundColor Green
