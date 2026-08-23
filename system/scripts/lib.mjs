@@ -49,10 +49,13 @@ export const SOURCES = {
   },
   hermes: {
     label: 'Hermes Agent', type: 'hermes-agent', mode: 'push',
-    base_url: 'http://192.168.1.17', auth_env: 'CAPTURE_TOKEN',
+    base_url: 'http://192.168.1.20', auth_env: 'CAPTURE_TOKEN',
     transport: 'HTTP-Endpoint (Port aus CAPTURE_PORT)', format: 'Markdown', scope: 'auf Zuruf',
     script: 'capture-server.mjs', sync: 'push', target: '00-Inbox',
-    note: 'Kein Pull: der Agent legt .md in die Inbox. Ablage-Mechanik noch nicht fertig entworfen (A5).',
+    note: 'Kein Pull: der Agent legt .md in die Inbox. Läuft als Container Hermes-Agent auf dem NAS '
+      + '(nicht .17, wie früher notiert). Der Vault ist dort NICHT gemountet und der Capture-Server '
+      + 'läuft derzeit nicht — Hermes kann also lesen (qmd/MCP), aber nichts ablegen. Rolle und '
+      + 'Grenzen als Admin: _system/HERMES-ADMIN.md',
   },
 };
 
