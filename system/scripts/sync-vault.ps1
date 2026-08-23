@@ -31,6 +31,8 @@ param(
   [switch]$KeinNachziehen,
   # Den LOKALEN qmd-Index nicht nachziehen (sonst wird er nach jeder Aenderung mitgepflegt).
   [switch]$KeinLokalerIndex,
+  # Vor dem Spiegeln auf dem NAS Eigentuemer und Gruppenrechte geradeziehen (braucht SSH).
+  [switch]$KeinRechteAbgleich,
   [string]$NasHost = 'unraid',
   [string]$QmdBefehl = "$env:APPDATA\npm\qmd.cmd"
 )
@@ -115,11 +117,39 @@ if ($zielZahl -gt 0) {
   }
 }
 
+# --- Rechte auf dem Ziel geradeziehen ----------------------------------------------------------
+# Hermes laeuft im eigenen Container als root und schreibt direkt in den gemounteten Vault; so
+# entstehen Dateien als root:root 644. Ueber die SMB-Freigabe (Benutzer nobody) sind die dann
+# unantastbar: robocopy kann sie nicht aktualisieren, Windows nicht bearbeiten, und der Ordner
+# laesst keinen Zeitstempel setzen. Am 23.08.2026 hat der Spiegel deswegen eine zugestellte
+# Notiz als ueberzaehlig geloescht. Hermes ist nicht aenderbar - also raeumt der Spiegel vorher auf.
+#
+# Laeuft IM Container second-brain: der hat den Vault gemountet, ist root und der Pfad ist bekannt.
+# Nur was noetig ist: Eigentuemer auf 99:100 (nobody:users) und Gruppenschreibrecht dort ergaenzen,
+# wo es fehlt. Kein pauschales chmod, sonst gehen bewusst gesetzte Rechte verloren.
+if (-not $KeinRechteAbgleich) {
+  # KEINE doppelten Anfuehrungszeichen in diesem Befehl: PowerShell 5.1 verstuemmelt sie beim
+  # Uebergeben an ein natives Programm. Am 23.08.2026 zerfiel der Befehl deshalb unterwegs,
+  # chown lief mit leerem Pfad - und die Erfolgsmeldung kam trotzdem, weil sie an einem echo hing.
+  # Darum wird jetzt das ERGEBNIS gemessen: die Zahl der Dateien, die danach noch nicht
+  # schreibbar sind. 0 heisst gut, alles andere ist ein Befund.
+  $datenPfad = '/usr/share/nginx/html/data'
+  $rechteBefehl = "docker exec second-brain sh -c 'chown -R 99:100 $datenPfad; find $datenPfad ! -perm -o+w -exec chmod a+w {} + ; find $datenPfad ! -perm -o+w | wc -l'"
+  $r = (ssh -o BatchMode=yes -o ConnectTimeout=10 $NasHost $rechteBefehl 2>&1) -join ' '
+  if ($r -match '(^|\s)0(\s|$)') {
+    Write-Host 'Rechte am Ziel geradegezogen: alles schreibbar (nobody:users).' -ForegroundColor DarkGray
+  } else {
+    Write-Host 'Rechteabgleich unvollstaendig - der Spiegel kann an fremden Dateien scheitern.' -ForegroundColor Yellow
+    Write-Host "  Antwort: $r" -ForegroundColor DarkGray
+  }
+}
+
 # --- Spiegeln ---
-# /DCOPY:T = nur Zeitstempel der Ordner uebernehmen, KEINE Attribute. Ordner, die der Container
+# /DCOPY:D = Ordner-Metadaten gar nicht uebernehmen (weder Attribute noch Zeitstempel). Ordner, die der Container
 # als root angelegt hat (00-Inbox/hermes), lassen ihre Attribute ueber die Freigabe nicht aendern:
 # robocopy meldete dort FEHLER 5 Zugriff verweigert, obwohl alle Dateien fehlerfrei durchgingen.
-$argumente = @($Quelle, $Ziel, '/MIR', '/FFT', '/DCOPY:T', '/R:2', '/W:5', '/NP', '/NDL', '/NJH')
+# Ordner-Zeitstempel haben in einem Spiegel keinen Wert - der Verzicht kostet nichts.
+$argumente = @($Quelle, $Ziel, '/MIR', '/FFT', '/DCOPY:D', '/R:2', '/W:5', '/NP', '/NDL', '/NJH')
 foreach ($d in $AusOrdner)  { $argumente += '/XD'; $argumente += $d }
 foreach ($f in $AusDateien) { $argumente += '/XF'; $argumente += $f }
 if ($Testlauf) { $argumente += '/L' }
