@@ -26,7 +26,10 @@ param(
   [switch]$Erzwingen,
   # Nach dem Spiegeln im Container neu ableiten und den Suchindex nachziehen (braucht SSH).
   [switch]$KeinNachziehen,
-  [string]$NasHost = 'unraid'
+  # Den LOKALEN qmd-Index nicht nachziehen (sonst wird er nach jeder Aenderung mitgepflegt).
+  [switch]$KeinLokalerIndex,
+  [string]$NasHost = 'unraid',
+  [string]$QmdBefehl = "$env:APPDATA\npm\qmd.cmd"
 )
 
 $ErrorActionPreference = 'Stop'
@@ -99,7 +102,24 @@ if ($was.Count -eq 0) { $was += 'nichts zu tun' }
 Write-Host ("Spiegel fertig: " + ($was -join ', ') + " (Code $code)") -ForegroundColor Green
 
 if ($Testlauf) { exit 0 }
-if ($KeinNachziehen) { Write-Host 'Nachziehen uebersprungen (-KeinNachziehen).'; exit 0 }
+
+# --- Lokalen Suchindex nachziehen ---------------------------------------------------------------
+# Auf dem NAS pflegt der Container den Index, lokal pflegte ihn NIEMAND: am 23.08.2026 war der
+# lokale Index einen Monat alt (221 Dokumente, keine einzige Wiki-Seite). Damit ist die
+# Bedeutungssuche in Claude Code blind fuer alles Neue - genau das, was die Suchleiter braucht.
+if (-not $KeinLokalerIndex) {
+  if (Test-Path -LiteralPath $QmdBefehl) {
+    Write-Host 'Lokalen Suchindex nachziehen ...'
+    & $QmdBefehl update | Select-Object -Last 3
+    # embed dauert Minuten -> abgekoppelt starten, die Stichwortsuche geht sofort
+    Start-Process -FilePath $QmdBefehl -ArgumentList 'embed' -WorkingDirectory $Quelle -WindowStyle Hidden
+    Write-Host 'Lokale Einbettungen laufen im Hintergrund.' -ForegroundColor DarkGray
+  } else {
+    Write-Host "qmd nicht gefunden ($QmdBefehl) - lokaler Index bleibt alt." -ForegroundColor Yellow
+  }
+}
+
+if ($KeinNachziehen) { Write-Host 'Nachziehen im Container uebersprungen (-KeinNachziehen).'; exit 0 }
 
 # --- Im Container nachziehen: neu ableiten + Suchindex aktualisieren ---
 Write-Host 'Im Container neu ableiten ...'

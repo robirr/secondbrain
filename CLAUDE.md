@@ -26,7 +26,9 @@ Dies ist Romans **Second Brain**: ~222 Markdown-Notizen, konsolidiert aus mehrer
 - Läuft komplett **lokal** (kleine Modelle in `~/.cache/qmd/`), keine Cloud, keine API-Kosten.
 - **Nach Änderungen am Bestand** neu ableiten:
   `node _system/scripts/build-index.mjs`  (Katalog + Landkarte + Verbindungen) und  `qmd update`  (Index).
-  Der Container macht beides bei jedem Start selbst; von Hand nur für Zwischenstände nötig.
+  Auf dem NAS macht der Container beides bei jedem Start selbst. **Der lokale Index wird
+  davon nicht berührt** — dafür `_system/scripts/sync-vault.ps1` (zieht lokal und im
+  Container nach) oder von Hand `qmd update` + `qmd embed`.
   Neue/veränderte Inhalte danach mit `qmd embed` einbetten.
 
 ## 09-Wiki (verdichtete Schicht — Phase C2/C3, noch nicht aktiv)
