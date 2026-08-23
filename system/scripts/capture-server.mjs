@@ -9,7 +9,7 @@
 // OHNE Token startet der Dienst NICHT. Ein offener Endpunkt liesse jeden im Netz in den Vault
 // schreiben — das ist kein Zustand, den man versehentlich haben will.
 import { createServer } from 'node:http';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, statSync, chownSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadEnv, ROOT, slugify, frontmatter } from './lib.mjs';
 
@@ -25,14 +25,40 @@ if (!TOKEN) {
   process.exit(2);
 }
 
+// Eigentuemer und Rechte vom Vault uebernehmen.
+// Der Dienst laeuft im Container als root; der Vault gehoert auf dem NAS nobody:users. Ohne diesen
+// Schritt entstehen Notizen als root:root 644 — dann kann sie ueber die Freigabe NIEMAND mehr
+// aendern: der Spiegel scheitert am Zeitstempel (robocopy FEHLER 5) und Roman kann die Notiz von
+// Windows aus nicht bearbeiten. Gemessen am 23.08.2026 mit genau diesem Ergebnis.
+// Scheitert das Anpassen (kein root, Dateisystem kann es nicht), bleibt die Notiz trotzdem liegen:
+// eine abgelegte Notiz mit falschen Rechten ist besser als eine verlorene.
+let rechteGemeldet = false;
+function rechteVomVault(pfad, istOrdner) {
+  try {
+    const v = statSync(ROOT);
+    chownSync(pfad, v.uid, v.gid);
+    const modus = v.mode & 0o777;
+    chmodSync(pfad, istOrdner ? modus : modus & 0o666);
+  } catch (e) {
+    if (!rechteGemeldet) {
+      console.warn('[capture] Rechte konnten nicht vom Vault uebernommen werden: ' + e.code
+        + ' — Notizen entstehen mit den Rechten des Dienstes.');
+      rechteGemeldet = true;
+    }
+  }
+}
+
 function writeNote({ title, content, tags }) {
   const now = new Date(), iso = now.toISOString();
   const dir = join(ROOT, '00-Inbox', 'hermes');
   mkdirSync(dir, { recursive: true });
+  rechteVomVault(dir, true);
   const fname = `${iso.slice(0, 10)}-${slugify(title || 'notiz')}.md`;
   const tagList = Array.isArray(tags) ? tags : (tags ? String(tags).split(',').map(s => s.trim()).filter(Boolean) : []);
   const fm = frontmatter({ title: title || 'Ohne Titel', source: 'hermes', source_id: `hermes-${now.getTime()}`, created: iso, tags: tagList });
-  writeFileSync(join(dir, fname), fm + '\n' + String(content || '').trim() + '\n', 'utf8');
+  const datei = join(dir, fname);
+  writeFileSync(datei, fm + '\n' + String(content || '').trim() + '\n', 'utf8');
+  rechteVomVault(datei, false);
   return `00-Inbox/hermes/${fname}`;
 }
 
