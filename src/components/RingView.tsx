@@ -7,7 +7,7 @@ import type { VizNode } from '../data/demo'
 import { getIcon } from '../icons'
 import { useStore } from '../store'
 import type { RawNote } from '../store'
-import { useDisplayNodes, isNoteId, dotSize, useVisibleNotes, useFilterActive } from '../display'
+import { useDisplayNodes, isNoteId, dotSize, useVisibleNotes, useEmptyMessage } from '../display'
 
 const C = 500
 const R_HOLE = 150 // Innenkante der Tortenstücke (Mitte bleibt für Hub und Quellen frei)
@@ -69,7 +69,7 @@ export default function RingView() {
 
 function ClusterRing() {
   const rawNotes = useVisibleNotes()
-  const filterActive = useFilterActive()
+  const leerText = useEmptyMessage()
   const nodes = useStore((s) => s.nodes)
   const noteEdges = useStore((s) => s.noteEdges)
   const settings = useStore((s) => s.settings)
@@ -154,7 +154,7 @@ function ClusterRing() {
   if (rawNotes.length === 0 || wedges.length === 0)
     return (
       <div className="grid h-full place-items-center text-[13px] text-faint">
-        {filterActive ? 'Der Filter lässt keine Notiz übrig.' : 'Keine Landkarte geladen (graph.json fehlt).'}
+        {leerText}
       </div>
     )
 
@@ -313,6 +313,7 @@ function ring(list: VizNode[], radius: number, start = -90): Record<string, Pos>
 function DrillRing() {
   const { hovered, selected, settings, setHovered, setSelected, setOpenNote } = useStore()
   const { nodes, edges } = useDisplayNodes()
+  const leerText = useEmptyMessage()
 
   const hub = useMemo(() => nodes.find((n) => n.type === 'orchestrator'), [nodes])
   const notes = useMemo(() => nodes.filter((n) => n.type !== 'orchestrator'), [nodes])
@@ -331,6 +332,12 @@ function DrillRing() {
 
   const focus = hovered ?? selected
   const dim = (id: string) => (focus && focus !== id && focus !== centerId ? 0.35 : 1)
+
+  // Ein Cluster ohne Notizen: sonst staende hier nur die nackte Nabe und der Leser raet, ob die
+  // Ansicht kaputt ist oder der Ordner leer. Betrifft vor allem die Inbox, die fest in der
+  // Navigation steht und meistens leer sein SOLL.
+  if (notes.length === 0)
+    return <div className="grid h-full place-items-center text-[13px] text-faint">{leerText}</div>
 
   return (
     <div className="relative flex h-full w-full items-center justify-center p-3">

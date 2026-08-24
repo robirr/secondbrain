@@ -3,7 +3,7 @@
 // Landkarte. Nichts erfunden: was es im Bestand nicht gibt, steht hier auch nicht.
 import { useMemo } from 'react'
 import { clusterMeta } from '../data/load'
-import { dotSize, useFilterActive, useVisibleNotes } from '../display'
+import { dotSize, useEmptyMessage, useVisibleNotes } from '../display'
 import { useStore } from '../store'
 import type { RawNote } from '../store'
 
@@ -35,7 +35,7 @@ function NoteDots({ notes, color, cols }: { notes: RawNote[]; color: string; col
 
 export default function LayerView() {
   const rawNotes = useVisibleNotes()
-  const filterActive = useFilterActive()
+  const leerText = useEmptyMessage()
   const noteEdges = useStore((s) => s.noteEdges)
   const enterDrill = useStore((s) => s.enterDrill)
   const setOpenNote = useStore((s) => s.setOpenNote)
@@ -77,7 +77,7 @@ export default function LayerView() {
   if (rawNotes.length === 0)
     return (
       <div className="grid h-full place-items-center text-[13px] text-faint">
-        {filterActive ? 'Der Filter lässt keine Notiz übrig.' : 'Keine Landkarte geladen (graph.json fehlt).'}
+        {leerText}
       </div>
     )
 

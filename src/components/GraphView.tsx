@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useStore } from '../store'
-import { useDisplayNodes, isNoteId, useVisibleNotes } from '../display'
+import { useDisplayNodes, isNoteId, useVisibleNotes, useEmptyMessage } from '../display'
 
 const C = 500, R = 388
 const TYPE_ORDER = ['core', 'knowledge', 'project', 'external'] as const
@@ -9,6 +9,7 @@ export default function GraphView() {
   const { hovered, selected, setHovered, setSelected, setOpenNote, enterDrill } = useStore()
   const { nodes, edges: allEdges, isDrill } = useDisplayNodes()
   const visible = useVisibleNotes()
+  const leerText = useEmptyMessage()
 
   // Bereiche, in denen der Filter noch Notizen übrig lässt
   const clusterHasNotes = useMemo(() => {
@@ -40,6 +41,10 @@ export default function GraphView() {
 
   const edges = allEdges.filter((e) => pos[e.source] && pos[e.target])
 
+
+  // Drill in einen Cluster ohne Notizen: sonst schwebt nur die Nabe allein im Netz.
+  if (isDrill && nodes.filter((n) => n.type !== 'orchestrator').length === 0)
+    return <div className="grid h-full place-items-center text-[13px] text-faint">{leerText}</div>
   return (
     <div className="relative flex h-full w-full items-center justify-center p-6">
       <div className="relative aspect-square max-h-full max-w-full" style={{ width: 'min(100%, calc(100vh - 8rem))' }}>

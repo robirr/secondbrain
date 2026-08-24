@@ -38,6 +38,25 @@ export function useFilterActive(): boolean {
   return !!clusters || !!source || orphans
 }
 
+/**
+ * Warum ist die Ansicht leer? Drei Gründe, drei Sätze.
+ * Vorher stand hier für JEDEN Fall ohne aktiven Filter "graph.json fehlt" — beim Sprung in einen
+ * leeren Cluster (etwa die Inbox, wenn nichts wartet) war das eine glatte Falschaussage.
+ */
+export function useEmptyMessage(): string {
+  const drill = useStore((s) => s.drill)
+  const hatDaten = useStore((s) => s.rawNotes.length > 0)
+  const gefiltert = useFilterActive()
+  if (!hatDaten) return 'Keine Landkarte geladen (graph.json fehlt).'
+  if (drill) {
+    const name = clusterMeta(drill).label
+    return gefiltert
+      ? `In „${name}" lässt der Filter keine Notiz übrig.`
+      : `In „${name}" liegt gerade nichts.`
+  }
+  return gefiltert ? 'Der Filter lässt keine Notiz übrig.' : 'Keine Landkarte geladen (graph.json fehlt).'
+}
+
 /** Anzuzeigende Knoten/Kanten: Basis-Cluster, oder im Drill die Notizen eines Clusters. */
 export function useDisplayNodes(): { nodes: VizNode[]; edges: VizEdge[]; isDrill: boolean } {
   const nodes = useStore((s) => s.nodes)

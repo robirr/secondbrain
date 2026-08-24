@@ -8,7 +8,7 @@ export interface GraphJson {
 
 // Cluster-Ordner → Anzeige/Farbe/Icon (konsistent mit dem Farbkonzept)
 const CLUSTER_META: Record<string, { label: string; color: string; icon: string }> = {
-  '00-Inbox': { label: 'Inbox', color: '#8798b5', icon: 'grip' },
+  '00-Inbox': { label: 'Inbox', color: '#8798b5', icon: 'inbox' },
   '01-Daily': { label: 'Daily / Kalender', color: '#2dd4bf', icon: 'calendar' },
   '05-Vorlagen': { label: 'Vorlagen', color: '#8798b5', icon: 'file-text' },
   '09-Wiki': { label: 'Wiki', color: '#8b7cf6', icon: 'book-open' },

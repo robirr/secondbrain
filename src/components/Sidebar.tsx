@@ -3,7 +3,13 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { getIcon } from '../icons'
+import { clusterMeta } from '../data/load'
 import { useStore } from '../store'
+
+// Die Inbox steht fest in der Navigation, auch wenn sie leer ist: sie ist kein Wissenscluster,
+// sondern der Eingang. Ohne festen Platz taucht sie erst auf, wenn Hermes etwas einwirft — ein
+// Navigationspunkt, den man nie gesehen hat und deshalb nicht sucht. „0" ist auch eine Auskunft.
+const INBOX_ORDNER = '00-Inbox'
 
 // Ansichten (funktional — schalten settings.view)
 const VIEWS: { label: string; key: string; icon: LucideIcon }[] = [
@@ -25,10 +31,11 @@ export default function Sidebar() {
   const systemPage = useStore((s) => s.systemPage)
   const setSystemPage = useStore((s) => s.setSystemPage)
   const noteCount = useStore((s) => s.rawNotes.length)
+  const inboxCount = useStore((s) => s.rawNotes.filter((n) => n.cluster === INBOX_ORDNER).length)
 
   // echte Cluster (aus der Landkarte) als Sprungziele
   const clusters = nodes
-    .filter((n) => n.type === 'knowledge' && n.meta?.Ordner)
+    .filter((n) => n.type === 'knowledge' && n.meta?.Ordner && n.meta.Ordner !== INBOX_ORDNER)
     .map((n) => ({ folder: n.meta!.Ordner as string, name: n.name, color: n.color, icon: n.icon, count: Number(String(n.meta!.Notizen ?? '').replace(/\D/g, '')) || 0 }))
 
   return (
@@ -46,6 +53,8 @@ export default function Sidebar() {
         <div className="mb-5">
           <div className="eyebrow px-3 pb-2">Navigation</div>
           <ul className="space-y-0.5">
+            <InboxZeile count={inboxCount} on={drill === INBOX_ORDNER}
+              onClick={() => (drill === INBOX_ORDNER ? exitDrill() : enterDrill(INBOX_ORDNER))} />
             <NavButton label="Übersicht" icon={LayoutDashboard} on={!drill && !systemPage} onClick={exitDrill} />
             {clusters.map((c) => {
               const Icon = getIcon(c.icon)
@@ -133,6 +142,45 @@ function NavButton({ label, icon: Icon, on, onClick }: { label: string; icon: Lu
         {on && <ActiveBar />}
         <Icon size={16} className={on ? 'text-c-wissen' : 'text-faint group-hover:text-muted'} />
         <span className="truncate">{label}</span>
+      </button>
+    </li>
+  )
+}
+
+/**
+ * Eingang. Ruhig, solange nichts wartet — dann grau wie die Cluster-Zähler daneben.
+ * Sobald etwas eintrifft, bekommt der Zähler Farbe und eine Kontur: die Zeile soll dann den Blick
+ * ziehen, ohne zu lärmen. Ziel des Klicks ist der ganz normale Drill in 00-Inbox.
+ */
+function InboxZeile({ count, on, onClick }: { count: number; on: boolean; onClick: () => void }) {
+  const m = clusterMeta('00-Inbox')
+  const Icon = getIcon(m.icon)
+  const wartet = count > 0
+  return (
+    <li>
+      <button
+        onClick={onClick}
+        className={rowCls(on)}
+        title={wartet
+          ? `${count} ${count === 1 ? 'Notiz wartet' : 'Notizen warten'} auf das Einsortieren`
+          : 'Nichts wartet. Hier legen der Capture-Kanal und die Konnektoren ab.'}
+      >
+        {on && <ActiveBar />}
+        {/* Farbe ueber die Utility-Klasse, nicht ueber das color-Attribut: eine var() im
+            Praesentationsattribut wird hier nicht aufgeloest, das Icon bliebe grau. */}
+        <Icon
+          size={16}
+          strokeWidth={1.8}
+          className={wartet ? 'text-c-kreativitaet' : on ? 'text-muted' : 'text-faint group-hover:text-muted'}
+        />
+        <span className="truncate">Inbox</span>
+        {wartet ? (
+          <span className="ml-auto rounded-full border border-[rgba(255,157,77,0.35)] bg-[rgba(255,157,77,0.12)] px-1.5 py-px font-mono text-[10px] text-c-kreativitaet">
+            {count}
+          </span>
+        ) : (
+          <span className="ml-auto font-mono text-[10px] text-faint">0</span>
+        )}
       </button>
     </li>
   )

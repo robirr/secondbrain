@@ -8,7 +8,7 @@ import { OrbitControls, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { getIcon } from '../icons'
 import { clusterMeta } from '../data/load'
-import { dotSize, useFilterActive, useVisibleNotes } from '../display'
+import { dotSize, useEmptyMessage, useVisibleNotes } from '../display'
 import { fibDir, islandPartition } from '../globe-layout'
 import { useStore } from '../store'
 import type { RawNote } from '../store'
@@ -157,7 +157,7 @@ function Scene({ continents, sources, hub, showLabels, animate, onDrill, onOpen,
 
 export default function GlobeView() {
   const rawNotes = useVisibleNotes()
-  const filterActive = useFilterActive()
+  const leerText = useEmptyMessage()
   const nodes = useStore((s) => s.nodes)
   const drill = useStore((s) => s.drill)
   const settings = useStore((s) => s.settings)
@@ -202,10 +202,12 @@ export default function GlobeView() {
     return list.map(([name, count], i) => ({ name, count, dir: fibDir(i, Math.max(list.length, 3)) }))
   }, [rawNotes, drill])
 
-  if (rawNotes.length === 0)
+  // Auch der Drill in einen leeren Cluster: sonst dreht sich eine Kugel ohne einen einzigen
+  // Kontinent, was wie ein Ladefehler aussieht.
+  if (rawNotes.length === 0 || (drill && continents.length === 0))
     return (
       <div className="grid h-full place-items-center text-[13px] text-faint">
-        {filterActive ? 'Der Filter lässt keine Notiz übrig.' : 'Keine Landkarte geladen (graph.json fehlt).'}
+        {leerText}
       </div>
     )
 
