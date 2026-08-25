@@ -12,6 +12,49 @@ export function toVaultPath(p: string): string {
   return parts.join('/')
 }
 
+/** Pfad auf eine vergleichbare Form bringen: Kleinbuchstaben, jede Folge von Sonderzeichen
+ *  zu EINEM Bindestrich, Endung weg. '/' bleibt Trenner. */
+function pfadSchluessel(s: string): string {
+  return s.toLowerCase()
+    .replace(/\.md$/, '')
+    .replace(/[^a-z0-9/]+/g, '-')
+    .replace(/-*\/-*/g, '/')
+    .replace(/^-+|-+$/g, '')
+}
+
+/**
+ * qmd-Treffer → echter Vault-Pfad.
+ *
+ * qmd meldet in `file` NICHT den Dateinamen, sondern eine bereinigte Fassung: jede Folge von
+ * Sonderzeichen wird zu einem Bindestrich. Aus
+ *   50-Projekte/Iveco9016/LiFePO4 Batterie Iveco 9016.md
+ * wird
+ *   brain/50-Projekte/Iveco9016/LiFePO4-Batterie-Iveco-9016.md
+ * Ein Abruf unter diesem Namen endet mit 404 — genau das war am 25.08.2026 der Grund, warum ein
+ * Suchtreffer sich anklicken liess, die Notiz aber nie erschien.
+ *
+ * Darum wird der Treffer gegen die bekannten Notizen aus graph.json aufgeloest statt dem
+ * gemeldeten Pfad geglaubt. Drei Stufen, jede strenger als die naechste ist locker:
+ * exakt, dann ueber den Vergleichsschluessel, zuletzt ueber einen eindeutigen Titel.
+ * Bleibt alles ohne eindeutiges Ergebnis, wird der bereinigte Pfad zurueckgegeben — dann zeigt
+ * das Panel seinen Fehlerkasten mit der URL, und der Fehler ist sichtbar statt geraten.
+ */
+export function resolveNotePath(file: string, notes: { id: string; title?: string }[], title?: string): string {
+  const rel = toVaultPath(file)
+  if (notes.some((x) => x.id === rel)) return rel
+
+  const schluessel = pfadSchluessel(rel)
+  const ueberPfad = notes.filter((x) => pfadSchluessel(x.id) === schluessel)
+  if (ueberPfad.length === 1) return ueberPfad[0].id
+
+  const t = (title || '').trim().toLowerCase()
+  if (t) {
+    const ueberTitel = notes.filter((x) => (x.title || '').trim().toLowerCase() === t)
+    if (ueberTitel.length === 1) return ueberTitel[0].id
+  }
+  return rel
+}
+
 /** Vault-relativer Pfad → URL unter data/ (jedes Segment einzeln kodiert) */
 export const dataUrl = (rel: string): string => 'data/' + rel.split('/').map(encodeURIComponent).join('/')
 

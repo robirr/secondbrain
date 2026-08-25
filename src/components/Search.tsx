@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Search as SearchIcon, Loader2, Sparkles, CornerDownLeft } from 'lucide-react'
 import { useStore } from '../store'
+import { resolveNotePath } from '../data/notes'
 
 interface QmdResult { docid: string; file: string; title: string; score: number; snippet: string }
 
@@ -58,6 +59,7 @@ export default function Search() {
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const { nodes, setSelected, setHovered, setOpenNote } = useStore()
+  const rawNotes = useStore((st) => st.rawNotes)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -87,8 +89,10 @@ export default function Search() {
   }
 
   const choose = (r: QmdResult) => {
-    setOpenNote(r.file)
-    const id = clusterIdFromFile(r.file)
+    // Nicht r.file oeffnen: das ist qmds bereinigter Name, keine existierende Datei.
+    const rel = resolveNotePath(r.file, rawNotes, r.title)
+    setOpenNote(rel)
+    const id = clusterIdFromFile(rel)
     if (id && nodes.some((n) => n.id === id)) setSelected(id)
     setOpen(false)
   }
