@@ -136,6 +136,13 @@ body {
   background: rgba(246, 195, 68, 0.055);
 }
 .md .callout[data-callout="widerspruch"] .callout-title { color: var(--color-c-finanzen); }
+/* Korrektur: ein richtiggestellter Befund. Ruhiger Ton — hier ist etwas geklaert,
+   nicht etwas offen. */
+.md .callout[data-callout="korrektur"] {
+  border-color: rgba(45, 212, 191, 0.35);
+  background: rgba(45, 212, 191, 0.06);
+}
+.md .callout[data-callout="korrektur"] .callout-title { color: var(--color-c-beruf); }
 .md .callout[data-callout="warnung"],
 .md .callout[data-callout="achtung"] {
   border-left-color: var(--color-c-gesundheit);

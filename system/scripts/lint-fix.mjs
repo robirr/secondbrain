@@ -7,12 +7,13 @@
 //   klone      16 Trilium-Klone in 01-Daily/Kalender loeschen (die thematische Fassung bleibt)
 //   verweise   die 5 Verweise auf contacts/directory.md auf das echte Verzeichnis umbiegen
 //   leere      9 leere "new note" und die leeren Sammelnotizen loeschen
+//   sammel     7 Ordner-Sammelnotizen loeschen, die nur ihren eigenen Namen enthalten
 //
 // Sicherheiten: ein Klon wird nur geloescht, wenn die Zwillingsdatei existiert UND beide bis auf
 // die Frontmatter-Zeile `branch:` zeichengleich sind. Eine leere Notiz nur, wenn ohne Frontmatter
 // nichts als der Titel uebrig bleibt. Nichts wird ueberschrieben, nur ersetzt oder entfernt.
 // Details der Befunde: 09-Wiki/Themen/Bestandspflege - Lint-Befunde.md
-import { readFileSync, writeFileSync, unlinkSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync, existsSync, readdirSync, statSync, copyFileSync, mkdirSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { ROOT } from './lib.mjs';
 
@@ -108,6 +109,63 @@ if (machen('verweise')) {
     if (neu === alt) { zeile('-', 'kein Treffer: ' + rel); continue; }
     if (APPLY) { writeFileSync(p(rel), neu, 'utf8'); getan++; zeile('x', 'Verweis gesetzt: ' + rel); }
     else zeile('~', 'wuerde umbiegen: ' + rel);
+  }
+}
+
+// ---------------------------------------------------------------- 2b) Sammelnotizen
+//
+// Trilium-Erbe: dort war jeder Ordner selbst eine Notiz. Im Markdown-Vault leistet der Ordner
+// das schon, diese Dateien enthalten nur noch ihren eigenen Namen. Die Liste ist explizit und
+// nicht geraten — und vor dem Loeschen wird jede Datei geprueft UND gesichert, damit ein
+// spaeter dazugekommener Inhalt nicht mitgeht.
+const SAMMEL = [
+  '40-Ressourcen/AI & LLM.md',
+  '40-Ressourcen/Immobilien.md',
+  '40-Ressourcen/IoT & Smart Home.md',
+  '40-Ressourcen/Netzwerk & Infrastruktur.md',
+  '40-Ressourcen/Finanzen & Trading.md',
+  '40-Ressourcen/Handwerk & DIY.md',
+  '40-Ressourcen/CAS Advanced Cloud Computing.md',
+];
+
+/** Kopie unter _system/geloescht-<datum>-<aufgabe>/ ablegen, Ordnerstruktur erhalten. */
+function sichern(rel, aufgabe) {
+  const datum = new Date().toISOString().slice(0, 10);
+  const ziel = join(ROOT, '_system', 'geloescht-' + datum + '-' + aufgabe, ...rel.split('/'));
+  mkdirSync(ziel.slice(0, ziel.lastIndexOf(sep)), { recursive: true });
+  copyFileSync(p(rel), ziel);
+  return relative(ROOT, ziel).split(sep).join('/');
+}
+
+if (machen('sammel')) {
+  console.log('\n[sammel] Ordner-Sammelnotizen entfernen (enthalten nur ihren eigenen Namen)');
+  for (const rel of SAMMEL) {
+    geplant++;
+    if (!existsSync(p(rel))) { zeile('-', 'schon weg: ' + rel); continue; }
+    const roh = lies(rel);
+    const koerper = rumpf(roh)
+      .replace(/^#\s+.+$/m, '')            // ATX-Ueberschrift
+      .replace(/^.+\n[=-]{3,}\s*$/m, '')   // Setext-Ueberschrift (Name mit ==== darunter)
+      .trim();
+    const name = rel.split('/').pop().replace(/\.md$/i, '');
+    // Zwei Sicherungen: nichts Verlinktes, und kaum Text. Ein Ordner, der inzwischen echten
+    // Inhalt bekommen hat, faellt damit raus statt still zu verschwinden.
+    if (/\]\(/.test(koerper) || /\[\[/.test(koerper)) {
+      zeile('!', 'ABBRUCH, enthaelt Verweise: ' + rel); verweigert++; continue;
+    }
+    const ohneNamen = koerper.split(name).join('').trim();
+    if (ohneNamen.length > 120) {
+      zeile('!', 'ABBRUCH, enthaelt Inhalt (' + ohneNamen.length + ' Zeichen ueber den Namen hinaus): ' + rel);
+      verweigert++; continue;
+    }
+    if (APPLY) {
+      const kopie = sichern(rel, 'sammel');
+      unlinkSync(p(rel));
+      getan++;
+      zeile('x', 'geloescht: ' + rel + '  (Sicherung: ' + kopie + ')');
+    } else {
+      zeile('~', 'wuerde loeschen: ' + rel + (ohneNamen ? '  [ausser dem Namen: "' + ohneNamen.slice(0, 60) + '"]' : ''));
+    }
   }
 }
 
