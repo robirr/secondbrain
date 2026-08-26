@@ -6,15 +6,22 @@ export default function Topbar() {
   const selected = useStore((s) => s.selected)
   const setSelected = useStore((s) => s.setSelected)
   const systemPage = useStore((s) => s.systemPage)
-  const onSystem = systemPage === 'verbindungen'
+  const onSystem = systemPage !== null
+  // Jede Systemseite benennt sich selbst. Ohne diesen Eintrag stuende ueber dem Wiki
+  // "Uebersicht — Dein Wissenssystem auf einen Blick", also schlicht etwas Falsches.
+  const KOPF: Record<string, { titel: string; unter: string }> = {
+    verbindungen: { titel: 'Verbindungen', unter: 'Woher das Wissen kommt und was daraus gebaut wird' },
+    wiki: { titel: 'Wiki', unter: 'Die verdichtete Schicht — Seiten, Stichworte, offene Widersprüche' },
+  }
+  const kopf = (systemPage && KOPF[systemPage]) || { titel: 'Übersicht', unter: 'Dein Wissenssystem auf einen Blick' }
   return (
     <header className="relative z-10 flex h-16 shrink-0 items-center gap-4 px-6">
       <div>
         <div className="text-[15px] font-semibold tracking-tight leading-none">
-          {onSystem ? 'Verbindungen' : 'Übersicht'}
+          {kopf.titel}
         </div>
         <div className="eyebrow mt-1">
-          {onSystem ? 'Woher das Wissen kommt und was daraus gebaut wird' : 'Dein Wissenssystem auf einen Blick'}
+          {kopf.unter}
         </div>
       </div>
 

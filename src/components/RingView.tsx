@@ -7,7 +7,7 @@ import type { VizNode } from '../data/demo'
 import { getIcon } from '../icons'
 import { useStore } from '../store'
 import type { RawNote } from '../store'
-import { useDisplayNodes, isNoteId, dotSize, useVisibleNotes, useEmptyMessage } from '../display'
+import { useDisplayNodes, isNoteId, dotSize, useVisibleNotes, useEmptyMessage, isFolderId, folderPath } from '../display'
 
 const C = 500
 const R_HOLE = 150 // Innenkante der Tortenstücke (Mitte bleibt für Hub und Quellen frei)
@@ -311,7 +311,7 @@ function ring(list: VizNode[], radius: number, start = -90): Record<string, Pos>
 }
 
 function DrillRing() {
-  const { hovered, selected, settings, setHovered, setSelected, setOpenNote } = useStore()
+  const { hovered, selected, settings, setHovered, setSelected, setOpenNote, enterDrill } = useStore()
   const { nodes, edges } = useDisplayNodes()
   const leerText = useEmptyMessage()
 
@@ -354,7 +354,11 @@ function DrillRing() {
           {nodes.map((n) => pos[n.id] && (
             <Node key={n.id} n={n} p={pos[n.id]} opacity={dim(n.id)} focused={focus === n.id} settings={settings}
               onEnter={() => setHovered(n.id)} onLeave={() => setHovered(null)}
-              onClick={() => (isNoteId(n.id) ? setOpenNote(n.id) : setSelected(selected === n.id ? null : n.id))} />
+              onClick={() => {
+                if (isFolderId(n.id)) enterDrill(folderPath(n.id))       // eine Ebene tiefer
+                else if (isNoteId(n.id)) setOpenNote(n.id)
+                else setSelected(selected === n.id ? null : n.id)
+              }} />
           ))}
         </svg>
       </div>

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useStore } from '../store'
-import { useDisplayNodes, isNoteId, useVisibleNotes, useEmptyMessage } from '../display'
+import { useDisplayNodes, isNoteId, useVisibleNotes, useEmptyMessage, isFolderId, folderPath } from '../display'
 
 const C = 500, R = 388
 const TYPE_ORDER = ['core', 'knowledge', 'project', 'external'] as const
@@ -62,7 +62,11 @@ export default function GraphView() {
             return (
               <g key={n.id} transform={`translate(${p.x},${p.y})`} opacity={dim}
                  onMouseEnter={() => setHovered(n.id)} onMouseLeave={() => setHovered(null)}
-                 onClick={() => (isNoteId(n.id) ? setOpenNote(n.id) : setSelected(selected === n.id ? null : n.id))}
+                 onClick={() => {
+                   if (isFolderId(n.id)) enterDrill(folderPath(n.id))       // eine Ebene tiefer
+                   else if (isNoteId(n.id)) setOpenNote(n.id)
+                   else setSelected(selected === n.id ? null : n.id)
+                 }}
                  onDoubleClick={() => { if (n.meta?.Ordner && !isDrill) enterDrill(n.meta.Ordner as string) }}
                  className="cursor-pointer transition-opacity duration-300">
                 <circle r={orch ? 26 : on ? 11 : 7} fill={n.color} fillOpacity={orch ? 0.25 : 0.9}

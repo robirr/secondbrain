@@ -15,7 +15,11 @@ export interface Settings {
   orphans: boolean // nur Notizen ohne Verweis
 }
 
-export interface RawNote { id: string; title: string; cluster: string; size?: number; source?: string | null }
+export interface RawNote {
+  id: string; title: string; cluster: string; size?: number; source?: string | null
+  // Nur die Wiki-Schicht fuellt diese Felder (siehe 09-Wiki/WIKI-SCHEMA.md).
+  type?: string | null; status?: string | null; updated?: string | null; aliases?: string[]
+}
 export interface NoteEdge { source: string; target: string } // Vault-relative Notiz-Ids
 
 interface State {
@@ -23,7 +27,7 @@ interface State {
   hovered: string | null
   openNote: string | null // Dateipfad der geöffneten Notiz (Lesepanel)
   noteHistory: string[] // Lesepfad im Panel (ältester zuerst); openNote selbst nicht enthalten
-  drill: string | null // Cluster-Ordner, in den hineingezoomt wird
+  drill: string | null // Ordner, in den hineingezoomt wird — Cluster ODER Unterordner ('00-Inbox/hermes')
   drillReturnView: string
   systemPage: string | null // Systemseite statt Visualisierung ('verbindungen') — null = Ansichten
   settings: Settings
@@ -89,7 +93,9 @@ export const useStore = create<State>((set) => ({
     const view = ['ring', 'graph', 'globus'].includes(s.settings.view) ? s.settings.view : 'ring'
     // In einen ausgefilterten Bereich zu springen würde eine leere Ansicht zeigen —
     // deshalb fällt der Bereichsfilter dabei weg.
-    const clusters = s.settings.clusters && !s.settings.clusters.includes(folder) ? null : s.settings.clusters
+    // Der Bereichsfilter kennt nur Cluster; bei einem Unterordner zaehlt sein Cluster.
+    const cluster = folder.split('/')[0]
+    const clusters = s.settings.clusters && !s.settings.clusters.includes(cluster) ? null : s.settings.clusters
     return {
       drill: folder,
       drillReturnView: s.drill ? s.drillReturnView : s.settings.view,
@@ -114,6 +120,7 @@ export const useStore = create<State>((set) => ({
       const { nodes, edges } = mapGraph(g)
       const rawNotes: RawNote[] = g.nodes.map((n: RawNote) => ({
         id: n.id, title: n.title, cluster: n.cluster, size: n.size, source: n.source,
+        type: n.type, status: n.status, updated: n.updated, aliases: n.aliases,
       }))
       // Notiz-Kanten unverändert übernehmen (mapGraph aggregiert nur für die Cluster-Sicht)
       const noteEdges: NoteEdge[] = Array.isArray(g.edges)

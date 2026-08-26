@@ -6,6 +6,7 @@ import RightPanel from './components/RightPanel'
 import ViewSwitcher from './components/ViewSwitcher'
 import NotePanel from './components/NotePanel'
 import ConnectionsPage from './components/ConnectionsPage'
+import WikiPage from './components/WikiPage'
 import { clusterMeta } from './data/load'
 import { useVisibleNotes } from './display'
 import { useStore } from './store'
@@ -26,7 +27,9 @@ export default function App() {
       <main className="relative z-10 flex min-w-0 flex-1 flex-col">
         <Topbar />
         <section className="relative flex-1 overflow-hidden">
-          {systemPage === 'verbindungen' ? <ConnectionsPage /> : (
+          {systemPage === 'verbindungen' ? <ConnectionsPage />
+            : systemPage === 'wiki' ? <WikiPage />
+            : (
             <>
               <ViewSwitcher />
               <DrillBar />
@@ -43,13 +46,19 @@ export default function App() {
   )
 }
 
+// Brotkrume des Drills. Seit der Drill mehrere Ordnerebenen tief gehen kann, muss sie den ganzen
+// Weg zeigen und jede Station anklickbar machen — sonst kommt man aus '20-Privat/Haus/Dach' nur
+// noch mit einem Sprung zurueck auf die Uebersicht heraus.
 function DrillBar() {
   const drill = useStore((s) => s.drill)
   const exitDrill = useStore((s) => s.exitDrill)
+  const enterDrill = useStore((s) => s.enterDrill)
   const rawNotes = useVisibleNotes()
   if (!drill) return null
-  const m = clusterMeta(drill)
-  const count = rawNotes.filter((r) => r.cluster === drill).length
+  const teile = drill.split('/')
+  const m = clusterMeta(teile[0])
+  // Alles, was unter dem aktuellen Pfad liegt — auch aus tieferen Ebenen.
+  const count = rawNotes.filter((r) => r.id.startsWith(drill + '/')).length
   return (
     <div className="glass fade-up absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full py-1.5 pl-1.5 pr-4">
       <button onClick={exitDrill}
@@ -57,7 +66,20 @@ function DrillBar() {
         <ChevronLeft size={14} /> Übersicht
       </button>
       <LayersIcon size={13} style={{ color: m.color }} />
-      <span className="text-[13px] font-medium text-ink">{m.label}</span>
+      {teile.map((teil, i) => {
+        const pfad = teile.slice(0, i + 1).join('/')
+        const letzter = i === teile.length - 1
+        const name = i === 0 ? m.label : teil
+        return (
+          <span key={pfad} className="flex items-center gap-2">
+            {i > 0 && <span className="text-[12px] text-faint">/</span>}
+            {letzter
+              ? <span className="text-[13px] font-medium text-ink">{name}</span>
+              : <button onClick={() => enterDrill(pfad)}
+                  className="text-[13px] text-muted transition-colors hover:text-ink">{name}</button>}
+          </span>
+        )
+      })}
       <span className="font-mono text-[11px] text-faint">{count} Notizen</span>
     </div>
   )

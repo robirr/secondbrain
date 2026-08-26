@@ -8,7 +8,7 @@ import { OrbitControls, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { getIcon } from '../icons'
 import { clusterMeta } from '../data/load'
-import { dotSize, useEmptyMessage, useVisibleNotes } from '../display'
+import { dotSize, useEmptyMessage, useVisibleNotes, drillCluster, drillLabel } from '../display'
 import { fibDir, islandPartition } from '../globe-layout'
 import { useStore } from '../store'
 import type { RawNote } from '../store'
@@ -173,11 +173,21 @@ export default function GlobeView() {
 
   const continents = useMemo<Continent[]>(() => {
     const groups = new Map<string, RawNote[]>()
+    // Ohne Drill sind die Kontinente die Cluster. Im Drill sind es die Unterordner des aktuellen
+    // Pfades — vorher wurde auf n.cluster === drill verglichen, was bei einem Unterordner-Pfad
+    // ('00-Inbox/hermes') nie zutrifft und die Kugel leer liess.
+    const praefix = drill ? drill + '/' : ''
     for (const n of rawNotes) {
-      if (drill && n.cluster !== drill) continue
-      const list = groups.get(n.cluster)
+      if (drill && !n.id.startsWith(praefix)) continue
+      let key = n.cluster
+      if (drill) {
+        const rest = n.id.slice(praefix.length)
+        const i = rest.indexOf('/')
+        key = i > 0 ? praefix + rest.slice(0, i) : praefix + '.'   // '.' = direkt in diesem Ordner
+      }
+      const list = groups.get(key)
       if (list) list.push(n)
-      else groups.set(n.cluster, [n])
+      else groups.set(key, [n])
     }
     const list = [...groups.entries()].sort((a, b) => b[1].length - a[1].length)
     if (list.length === 0) return []
@@ -185,10 +195,17 @@ export default function GlobeView() {
     // eines Bereichs entspricht damit seinem Umfang, und nichts überlappt.
     const { regions } = islandPartition(list.map(([, ns]) => ns.length), R_GLOBE)
     return list.map(([folder, notes], i) => {
-      const meta = clusterMeta(folder)
+      const meta = clusterMeta(drill ? drillCluster(folder) : folder)
       const node = nodes.find((n) => n.meta?.Ordner === folder)
+      const direktHier = folder.endsWith('/.')
+      // "direkt hier" nur, wenn es daneben auch Unterordner gibt. Ist der Ordner der einzige
+      // Kontinent, waere die Beschriftung sinnlos — dann traegt er seinen eigenen Namen.
+      const label = drill
+        ? (direktHier ? (list.length > 1 ? 'direkt hier' : drillLabel(drill)) : drillLabel(folder))
+        : (node?.name ?? meta.label)
       return {
-        folder, label: node?.name ?? meta.label, color: node?.color ?? meta.color, icon: node?.icon ?? meta.icon,
+        folder, label, color: node?.color ?? meta.color,
+        icon: drill ? (direktHier ? 'file-text' : 'folder') : (node?.icon ?? meta.icon),
         dir: regions[i].dir, notes, pts: regions[i].pts,
       }
     })
@@ -212,9 +229,10 @@ export default function GlobeView() {
     )
 
   const brain = nodes.find((n) => n.type === 'orchestrator')
-  const drillMeta = drill ? clusterMeta(drill) : null
+  const drillMeta = drill ? clusterMeta(drillCluster(drill)) : null
   const hub = drillMeta
-    ? { label: drillMeta.label, icon: drillMeta.icon, color: drillMeta.color, sub: `${continents[0]?.notes.length ?? 0} Notizen` }
+    ? { label: drillLabel(drill!), icon: drillMeta.icon, color: drillMeta.color,
+        sub: `${continents.reduce((s2, c) => s2 + c.notes.length, 0)} Notizen` }
     : {
       label: brain?.name ?? 'Second Brain', icon: brain?.icon ?? 'brain', color: brain?.color ?? '#8b7cf6',
       sub: `${rawNotes.length} Notizen in ${continents.length} Bereichen`,

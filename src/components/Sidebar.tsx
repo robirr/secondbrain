@@ -10,6 +10,11 @@ import { useStore } from '../store'
 // sondern der Eingang. Ohne festen Platz taucht sie erst auf, wenn Hermes etwas einwirft — ein
 // Navigationspunkt, den man nie gesehen hat und deshalb nicht sucht. „0" ist auch eine Auskunft.
 const INBOX_ORDNER = '00-Inbox'
+// Das Wiki ist kein Cluster wie die anderen: es ist die verdichtete Schicht mit eigenen
+// Seitentypen und Zustaenden. Als Punktwolke war davon nichts zu sehen, darum oeffnet die Zeile
+// das Seitenverzeichnis. Die Landkarte bleibt erreichbar — ueber den Knopf dort oder per
+// Doppelklick auf das Wiki-Tortenstueck in der Uebersicht.
+const WIKI_ORDNER = '09-Wiki'
 
 // Ansichten (funktional — schalten settings.view)
 const VIEWS: { label: string; key: string; icon: LucideIcon }[] = [
@@ -58,13 +63,18 @@ export default function Sidebar() {
             <NavButton label="Übersicht" icon={LayoutDashboard} on={!drill && !systemPage} onClick={exitDrill} />
             {clusters.map((c) => {
               const Icon = getIcon(c.icon)
-              const on = drill === c.folder
+              const wiki = c.folder === WIKI_ORDNER
+              const on = wiki ? systemPage === 'wiki' : drill === c.folder && !systemPage
               return (
                 <li key={c.folder}>
                   <button
-                    onClick={() => (on ? exitDrill() : enterDrill(c.folder))}
+                    onClick={() => {
+                      if (wiki) setSystemPage(systemPage === 'wiki' ? null : 'wiki')
+                      else if (on) exitDrill()
+                      else enterDrill(c.folder)
+                    }}
                     className={rowCls(on)}
-                    title={`In „${c.name}" springen`}
+                    title={wiki ? 'Seitenverzeichnis des Wikis öffnen' : `In „${c.name}" springen`}
                   >
                     {on && <ActiveBar />}
                     <Icon size={16} color={on ? c.color : undefined} className={on ? '' : 'text-faint group-hover:text-muted'} strokeWidth={1.8} />

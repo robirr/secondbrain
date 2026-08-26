@@ -1,7 +1,7 @@
 # Second Brain — Regelwerk (Brain-First)
 
 Dies ist Romans **Second Brain**: rund 210 Quellnotizen aus mehreren Quellen (Memos, Trilium,
-tududi) plus eine KI-gepflegte Wiki-Schicht mit 27 verdichteten Seiten. **Markdown ist die einzige Wahrheit.** Abgeleitete Sichten
+tududi) plus eine KI-gepflegte Wiki-Schicht mit 28 verdichteten Seiten. **Markdown ist die einzige Wahrheit.** Abgeleitete Sichten
 (`INDEX.md`, `graph.json`, `integrations.json`, `.qmd/`) sind jederzeit neu baubar und wegwerfbar.
 
 ## Brain-First — die Suchleiter (bei JEDER Wissensfrage, in dieser Reihenfolge)
@@ -9,7 +9,7 @@ tududi) plus eine KI-gepflegte Wiki-Schicht mit 27 verdichteten Seiten. **Markdo
 1. **`INDEX.md` lesen** — der Katalog (eine Zeile je Notiz, gruppiert nach Cluster). Steht die
    passende Quelle dort, gehe direkt zu ihr.
 2. **`09-Wiki/` prüfen** — liegt das Wissen dort schon verdichtet? **Das Wiki ist aktiv**
-   (27 Inhaltsseiten, alle Cluster verdichtet): `09-Wiki/_seitenverzeichnis.md` ist der
+   (28 Inhaltsseiten: 26 Themen, 2 Entitäten — alle Cluster verdichtet): `09-Wiki/_seitenverzeichnis.md` ist der
    Einstieg, er nennt je Seite Stichworte und Status.
 3. **qmd-Suche** — über den MCP-Server **`qmd`**: Tool `query` (hybrid, beste Qualität), alt.
    `search` (Stichwort) / `vsearch` (Bedeutung). Kandidaten prüfen, **ohne** Dateien zu öffnen.
