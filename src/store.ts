@@ -26,6 +26,9 @@ interface State {
   selected: string | null
   hovered: string | null
   openNote: string | null // Dateipfad der geöffneten Notiz (Lesepanel)
+  // Ganzseitig lesen statt in der Schublade. Im Wiki der Normalfall: dort ist die Notiz das
+  // Ziel, nicht eine Randbemerkung zur Landkarte dahinter.
+  noteVollseite: boolean
   noteHistory: string[] // Lesepfad im Panel (ältester zuerst); openNote selbst nicht enthalten
   drill: string | null // Ordner, in den hineingezoomt wird — Cluster ODER Unterordner ('00-Inbox/hermes')
   drillReturnView: string
@@ -40,6 +43,7 @@ interface State {
   setHovered: (id: string | null) => void
   setOpenNote: (path: string | null) => void
   setSystemPage: (page: string | null) => void
+  openNoteVoll: (path: string | null) => void // Notiz ganzseitig oeffnen (Wiki)
   pushNote: (id: string) => void // Sprung IM Panel (Link/Verweis) — mit Verlauf
   backNote: () => void
   enterDrill: (folder: string) => void
@@ -54,6 +58,7 @@ export const useStore = create<State>((set) => ({
   hovered: null,
   openNote: null,
   noteHistory: [],
+  noteVollseite: false,
   drill: null,
   drillReturnView: 'ring',
   systemPage: null,
@@ -76,7 +81,10 @@ export const useStore = create<State>((set) => ({
   setSystemPage: (page) => set({ systemPage: page }),
   setHovered: (id) => set({ hovered: id }),
   // Einstieg von aussen (Suche, Inspector, Wolke) beginnt einen neuen Lesepfad
-  setOpenNote: (path) => set({ openNote: path, noteHistory: [] }),
+  setOpenNote: (path) => set({ openNote: path, noteHistory: [], noteVollseite: false }),
+  // Wie setOpenNote, aber ganzseitig. pushNote laesst das Flag stehen — ein Verweis INNERHALB
+  // einer ganzseitig gelesenen Notiz bleibt damit ebenfalls ganzseitig.
+  openNoteVoll: (path) => set({ openNote: path, noteHistory: [], noteVollseite: true }),
   // Schritt im Panel: Verlauf wächst; ein Selbstlink ändert nichts
   pushNote: (id) => set((s) => (id === s.openNote ? {} : {
     openNote: id,

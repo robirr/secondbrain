@@ -150,3 +150,13 @@ body {
 }
 .md .callout[data-callout="hinweis"] .callout-title,
 .md .callout[data-callout="info"] .callout-title { color: var(--color-c-projekte); }
+
+/* Ganzseitiges Lesen (Wiki). Fliesstext bekommt eine Lesebreite; Tabellen, Codebloecke und
+   Bilder duerfen breiter werden, weil sie davon profitieren — Prosa nicht: zu lange Zeilen
+   sind schwerer zu lesen, "ganze Seite" heisst also nicht "ganze Zeile". */
+.lesebreite { max-width: 1100px; margin-inline: auto; }
+.lesebreite > .md > *,
+.lesebreite > .md > .callout { max-width: 820px; margin-inline: auto; }
+.lesebreite > .md > table,
+.lesebreite > .md > pre,
+.lesebreite > .md > img { max-width: 100%; }

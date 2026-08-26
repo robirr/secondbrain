@@ -1,7 +1,11 @@
-import { useMemo } from 'react'
-import { AlertTriangle, BookOpen, Boxes, FileCog, Network } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  AlertTriangle, BookOpen, Boxes, ChevronDown, ChevronRight, FileCog, Network,
+  PanelLeftClose, PanelLeftOpen,
+} from 'lucide-react'
 import { useStore } from '../store'
 import type { RawNote } from '../store'
+import { NoteVollseite } from './NotePanel'
 
 // Die verdichtete Schicht als Wiki lesen, nicht als Punktwolke.
 //
@@ -9,11 +13,17 @@ import type { RawNote } from '../store'
 // tragen einen offenen Widerspruch. Als Ring aus 31 gleichen Punkten war davon nichts zu sehen —
 // Themen, Entitaeten und Verwaltungsseiten lagen ununterscheidbar nebeneinander.
 //
-// Alles hier Gezeigte steht in graph.json: type, status, updated und aliases kommen aus der
+// Aufbau wie in einem klassischen Wiki: Baum links, Inhalt rechts. Der Baum bleibt beim Lesen
+// stehen, damit man weiss, wo man ist; er laesst sich wegklappen, wenn der Text die Breite
+// braucht. Gelesen wird ganzseitig, nicht in der Schublade — im Wiki ist die Seite das Ziel.
+//
+// Alles Gezeigte steht in graph.json: type, status, updated und aliases kommen aus der
 // Frontmatter jeder Seite (siehe 09-Wiki/WIKI-SCHEMA.md), die Verweiszahl aus den Notiz-Kanten.
 // Nichts wird geraten, nichts geschaetzt.
 
 const WIKI = '09-Wiki'
+const SPEICHER_BAUM = 'brain.wiki.baum'
+const SPEICHER_GRUPPEN = 'brain.wiki.gruppen'
 
 /** Verwaltungsseiten: Regeln und Protokolle, kein Wissen. Sie gehoeren nicht in die Seitenliste. */
 const VERWALTUNG: Record<string, string> = {
@@ -24,13 +34,20 @@ const VERWALTUNG: Record<string, string> = {
   // die Seite steht also gar nicht in der Landkarte.
 }
 
-export default function WikiPage() {
+/** Kleiner Speicher fuer Bedienzustaende. Faellt lautlos zurueck, wenn der Browser ihn sperrt. */
+function useGemerkt<T>(schluessel: string, standard: T): [T, (w: T) => void] {
+  const [wert, setzen] = useState<T>(() => {
+    try { const r = localStorage.getItem(schluessel); return r === null ? standard : (JSON.parse(r) as T) }
+    catch { return standard }
+  })
+  useEffect(() => { try { localStorage.setItem(schluessel, JSON.stringify(wert)) } catch { /* egal */ } }, [schluessel, wert])
+  return [wert, setzen]
+}
+
+function useWikiDaten() {
   const rawNotes = useStore((s) => s.rawNotes)
   const noteEdges = useStore((s) => s.noteEdges)
-  const setOpenNote = useStore((s) => s.setOpenNote)
-  const enterDrill = useStore((s) => s.enterDrill)
-
-  const daten = useMemo(() => {
+  return useMemo(() => {
     const alle = rawNotes.filter((n) => n.cluster === WIKI)
     const verwaltung = alle.filter((n) => VERWALTUNG[n.id])
     const seiten = alle.filter((n) => !VERWALTUNG[n.id])
@@ -50,10 +67,16 @@ export default function WikiPage() {
     const konflikte = seiten.filter((n) => n.status === 'konflikt').sort(nachTitel)
     const stand = seiten.map((n) => n.updated).filter(Boolean).sort().pop() || null
 
-    return { seiten, themen, entitaeten, ohneTyp, konflikte, verwaltung, grad, stand }
+    return { seiten, themen, entitaeten, ohneTyp, konflikte, verwaltung: verwaltung.sort(nachTitel), grad, stand }
   }, [rawNotes, noteEdges])
+}
 
-  if (daten.seiten.length === 0 && daten.verwaltung.length === 0) {
+export default function WikiPage() {
+  const d = useWikiDaten()
+  const openNote = useStore((s) => s.openNote)
+  const [baumOffen, setBaumOffen] = useGemerkt<boolean>(SPEICHER_BAUM, true)
+
+  if (d.seiten.length === 0 && d.verwaltung.length === 0) {
     return (
       <div className="grid h-full place-items-center px-8">
         <div className="glass max-w-[560px] rounded-2xl p-6">
@@ -61,13 +84,102 @@ export default function WikiPage() {
           <h2 className="mb-2 text-[16px] font-semibold text-ink">Keine Wiki-Seiten in der Landkarte</h2>
           <p className="text-[13px] leading-relaxed text-muted">
             Im Cluster <code className="font-mono text-[12px] text-ink">09-Wiki</code> liegt nichts, oder{' '}
-            <code className="font-mono text-[12px] text-ink">graph.json</code> ist aelter als die Seiten.
+            <code className="font-mono text-[12px] text-ink">graph.json</code> ist älter als die Seiten.
             Der Indexlauf im Vault baut sie neu.
           </p>
         </div>
       </div>
     )
   }
+
+  return (
+    <div className="flex h-full min-w-0">
+      {baumOffen
+        ? <Baum daten={d} aktiv={openNote} onZu={() => setBaumOffen(false)} />
+        : (
+          <button onClick={() => setBaumOffen(true)} title="Seitenbaum einblenden"
+            className="grid w-9 shrink-0 place-items-start border-r border-line pt-5 text-faint transition-colors hover:text-ink">
+            <PanelLeftOpen size={16} className="mx-auto" />
+          </button>
+        )}
+
+      <div className="min-w-0 flex-1">
+        {openNote ? <NoteVollseite /> : <Verzeichnis daten={d} />}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------- Baum
+
+type Daten = ReturnType<typeof useWikiDaten>
+
+function Baum({ daten, aktiv, onZu }: { daten: Daten; aktiv: string | null; onZu: () => void }) {
+  const openNoteVoll = useStore((s) => s.openNoteVoll)
+  const [zu, setZu] = useGemerkt<string[]>(SPEICHER_GRUPPEN, [])
+  const umschalten = (name: string) => setZu(zu.includes(name) ? zu.filter((x) => x !== name) : [...zu, name])
+
+  const gruppen: { name: string; icon: typeof BookOpen; seiten: RawNote[] }[] = [
+    { name: 'Themen', icon: BookOpen, seiten: daten.themen },
+    { name: 'Entitäten', icon: Boxes, seiten: daten.entitaeten },
+    ...(daten.ohneTyp.length ? [{ name: 'Ohne Seitentyp', icon: BookOpen, seiten: daten.ohneTyp }] : []),
+    { name: 'Verwaltung', icon: FileCog, seiten: daten.verwaltung },
+  ]
+
+  return (
+    <nav className="flex w-[260px] shrink-0 flex-col border-r border-line">
+      <div className="flex items-center gap-2 px-4 pb-2 pt-5">
+        <div className="eyebrow">Seiten</div>
+        <button onClick={onZu} title="Seitenbaum ausblenden"
+          className="ml-auto grid h-6 w-6 place-items-center rounded-md text-faint transition-colors hover:bg-white/[0.06] hover:text-ink">
+          <PanelLeftClose size={14} />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-2 pb-6">
+        {gruppen.map(({ name, icon: Icon, seiten }) => {
+          const offen = !zu.includes(name)
+          return (
+            <div key={name} className="mb-1">
+              <button onClick={() => umschalten(name)}
+                className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] text-muted transition-colors hover:bg-white/[0.04] hover:text-ink">
+                {offen ? <ChevronDown size={13} className="shrink-0 text-faint" /> : <ChevronRight size={13} className="shrink-0 text-faint" />}
+                <Icon size={12} className="shrink-0 text-faint" />
+                <span className="truncate">{name}</span>
+                <span className="ml-auto font-mono text-[10px] text-faint">{seiten.length}</span>
+              </button>
+              {offen && (
+                <div className="ml-[9px] border-l border-line pl-1">
+                  {seiten.map((n) => {
+                    const on = aktiv === n.id
+                    const konflikt = n.status === 'konflikt'
+                    return (
+                      <button key={n.id} onClick={() => openNoteVoll(n.id)}
+                        title={(VERWALTUNG[n.id] ? '' : n.title + ' · ') + n.id}
+                        className={[
+                          'flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-[12px] transition-colors',
+                          on ? 'bg-white/[0.07] text-ink' : 'text-muted hover:bg-white/[0.04] hover:text-ink',
+                        ].join(' ')}>
+                        {konflikt && <AlertTriangle size={11} className="shrink-0 text-c-gesundheit" strokeWidth={2.2} />}
+                        <span className="truncate">{VERWALTUNG[n.id] ?? n.title}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </nav>
+  )
+}
+
+// ---------------------------------------------------------------- Verzeichnis
+
+function Verzeichnis({ daten }: { daten: Daten }) {
+  const openNoteVoll = useStore((s) => s.openNoteVoll)
+  const enterDrill = useStore((s) => s.enterDrill)
 
   return (
     <div className="h-full overflow-y-auto px-8 pb-12 pt-5">
@@ -92,51 +204,39 @@ export default function WikiPage() {
 
         {/* Widersprueche zuerst: sie sind der einzige Punkt, der eine Entscheidung braucht. */}
         {daten.konflikte.length > 0 && (
-          <section>
-            <Kopf icon={AlertTriangle} farbe="var(--color-c-gesundheit)"
-              titel="Offene Widersprüche"
-              hinweis={`${daten.konflikte.length} ${daten.konflikte.length === 1 ? 'Seite' : 'Seiten'} · löst nur der Mensch auf`} />
-            <div className="space-y-2">
-              {daten.konflikte.map((n) => (
-                <Zeile key={n.id} n={n} grad={daten.grad.get(n.id) ?? 0} onOpen={() => setOpenNote(n.id)} konflikt />
-              ))}
-            </div>
-          </section>
+          <Abschnitt icon={AlertTriangle} farbe="var(--color-c-gesundheit)" titel="Offene Widersprüche"
+            hinweis={`${daten.konflikte.length} ${daten.konflikte.length === 1 ? 'Seite' : 'Seiten'} · löst nur der Mensch auf`}>
+            {daten.konflikte.map((n) => (
+              <Zeile key={n.id} n={n} grad={daten.grad.get(n.id) ?? 0} onOpen={() => openNoteVoll(n.id)} konflikt />
+            ))}
+          </Abschnitt>
         )}
 
         {daten.themen.length > 0 && (
-          <section>
-            <Kopf icon={BookOpen} titel="Themen" hinweis={`${daten.themen.length} Seiten`} />
-            <div className="space-y-2">
-              {daten.themen.map((n) => (
-                <Zeile key={n.id} n={n} grad={daten.grad.get(n.id) ?? 0} onOpen={() => setOpenNote(n.id)}
-                  konflikt={n.status === 'konflikt'} />
-              ))}
-            </div>
-          </section>
+          <Abschnitt icon={BookOpen} titel="Themen" hinweis={`${daten.themen.length} Seiten`}>
+            {daten.themen.map((n) => (
+              <Zeile key={n.id} n={n} grad={daten.grad.get(n.id) ?? 0} onOpen={() => openNoteVoll(n.id)}
+                konflikt={n.status === 'konflikt'} />
+            ))}
+          </Abschnitt>
         )}
 
         {daten.entitaeten.length > 0 && (
-          <section>
-            <Kopf icon={Boxes} titel="Entitäten" hinweis={`${daten.entitaeten.length} Seiten · Dinge und Personen mit eigener Geschichte`} />
-            <div className="space-y-2">
-              {daten.entitaeten.map((n) => (
-                <Zeile key={n.id} n={n} grad={daten.grad.get(n.id) ?? 0} onOpen={() => setOpenNote(n.id)}
-                  konflikt={n.status === 'konflikt'} />
-              ))}
-            </div>
-          </section>
+          <Abschnitt icon={Boxes} titel="Entitäten"
+            hinweis={`${daten.entitaeten.length} Seiten · Dinge und Personen mit eigener Geschichte`}>
+            {daten.entitaeten.map((n) => (
+              <Zeile key={n.id} n={n} grad={daten.grad.get(n.id) ?? 0} onOpen={() => openNoteVoll(n.id)}
+                konflikt={n.status === 'konflikt'} />
+            ))}
+          </Abschnitt>
         )}
 
         {daten.ohneTyp.length > 0 && (
-          <section>
-            <Kopf icon={BookOpen} titel="Ohne Seitentyp" hinweis="Frontmatter-Feld type fehlt — gehört nachgetragen" />
-            <div className="space-y-2">
-              {daten.ohneTyp.map((n) => (
-                <Zeile key={n.id} n={n} grad={daten.grad.get(n.id) ?? 0} onOpen={() => setOpenNote(n.id)} />
-              ))}
-            </div>
-          </section>
+          <Abschnitt icon={BookOpen} titel="Ohne Seitentyp" hinweis="Frontmatter-Feld type fehlt — gehört nachgetragen">
+            {daten.ohneTyp.map((n) => (
+              <Zeile key={n.id} n={n} grad={daten.grad.get(n.id) ?? 0} onOpen={() => openNoteVoll(n.id)} />
+            ))}
+          </Abschnitt>
         )}
 
         {daten.verwaltung.length > 0 && (
@@ -144,7 +244,7 @@ export default function WikiPage() {
             <Kopf icon={FileCog} titel="Verwaltung" hinweis="Regeln und Protokolle, kein Wissen" />
             <div className="flex flex-wrap gap-2">
               {daten.verwaltung.map((n) => (
-                <button key={n.id} onClick={() => setOpenNote(n.id)}
+                <button key={n.id} onClick={() => openNoteVoll(n.id)}
                   className="rounded-xl border border-line bg-white/[0.02] px-3.5 py-2 text-left text-[12.5px] text-muted transition-colors hover:border-[rgba(139,124,246,0.4)] hover:text-ink">
                   {VERWALTUNG[n.id]}
                 </button>
@@ -154,6 +254,17 @@ export default function WikiPage() {
         )}
       </div>
     </div>
+  )
+}
+
+function Abschnitt({ icon, titel, hinweis, farbe, children }: {
+  icon: typeof BookOpen; titel: string; hinweis?: string; farbe?: string; children: React.ReactNode
+}) {
+  return (
+    <section>
+      <Kopf icon={icon} titel={titel} hinweis={hinweis} farbe={farbe} />
+      <div className="space-y-2">{children}</div>
+    </section>
   )
 }
 
@@ -170,8 +281,8 @@ function Kopf({ icon: Icon, titel, hinweis, farbe }: {
   )
 }
 
-/** Eine Seitenzeile: Titel, Stichworte, Stand, Verweiszahl. Klick öffnet sie im Lesepanel —
- *  dort funktionieren Wikilinks, Callouts und Rückverweise schon. */
+/** Eine Seitenzeile: Titel, Stichworte, Stand, Verweiszahl. Klick öffnet sie ganzseitig —
+ *  Wikilinks, Callouts und Rückverweise funktionieren dort wie gewohnt. */
 function Zeile({ n, grad, onOpen, konflikt }: {
   n: RawNote; grad: number; onOpen: () => void; konflikt?: boolean
 }) {
