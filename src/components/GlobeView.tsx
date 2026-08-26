@@ -8,7 +8,7 @@ import { OrbitControls, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { getIcon } from '../icons'
 import { clusterMeta } from '../data/load'
-import { dotSize, useEmptyMessage, useVisibleNotes, drillCluster, drillLabel } from '../display'
+import { dotSize, useEmptyMessage, useVisibleNotes, drillCluster, drillLabel, notizWort } from '../display'
 import { fibDir, islandPartition } from '../globe-layout'
 import { useStore } from '../store'
 import type { RawNote } from '../store'
@@ -232,10 +232,10 @@ export default function GlobeView() {
   const drillMeta = drill ? clusterMeta(drillCluster(drill)) : null
   const hub = drillMeta
     ? { label: drillLabel(drill!), icon: drillMeta.icon, color: drillMeta.color,
-        sub: `${continents.reduce((s2, c) => s2 + c.notes.length, 0)} Notizen` }
+        sub: notizWort(continents.reduce((s2, c) => s2 + c.notes.length, 0)) }
     : {
       label: brain?.name ?? 'Second Brain', icon: brain?.icon ?? 'brain', color: brain?.color ?? '#8b7cf6',
-      sub: `${rawNotes.length} Notizen in ${continents.length} Bereichen`,
+      sub: `${notizWort(rawNotes.length)} in ${continents.length} Bereichen`,
     }
 
   return (

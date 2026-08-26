@@ -62,6 +62,9 @@ export function useEmptyMessage(): string {
 // ('00-Inbox/hermes'), denn 199 von 232 Notizen liegen in einem Unterordner — flach dargestellt
 // sieht man einer Notiz nicht an, aus welchem Kanal oder Projektordner sie stammt.
 
+/** „1 Notiz“ statt „1 Notizen“. Seit der Drill einzelne Ordner zeigt, ist die Eins der Normalfall. */
+export const notizWort = (n: number): string => `${n} ${n === 1 ? 'Notiz' : 'Notizen'}`
+
 /** Drill-Pfad → oberster Cluster ('50-Projekte/Camper & Travel' → '50-Projekte'). */
 export const drillCluster = (pfad: string): string => pfad.split('/')[0]
 

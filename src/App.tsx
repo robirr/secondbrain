@@ -8,7 +8,7 @@ import NotePanel from './components/NotePanel'
 import ConnectionsPage from './components/ConnectionsPage'
 import WikiPage from './components/WikiPage'
 import { clusterMeta } from './data/load'
-import { useVisibleNotes } from './display'
+import { useVisibleNotes, notizWort } from './display'
 import { useStore } from './store'
 import { ChevronLeft, Layers as LayersIcon } from 'lucide-react'
 
@@ -80,7 +80,7 @@ function DrillBar() {
           </span>
         )
       })}
-      <span className="font-mono text-[11px] text-faint">{count} Notizen</span>
+      <span className="font-mono text-[11px] text-faint">{notizWort(count)}</span>
     </div>
   )
 }
