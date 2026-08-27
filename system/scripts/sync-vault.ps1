@@ -31,6 +31,8 @@ param(
   [switch]$KeinNachziehen,
   # Den LOKALEN qmd-Index nicht nachziehen (sonst wird er nach jeder Aenderung mitgepflegt).
   [switch]$KeinLokalerIndex,
+  # Den Rueckkanal ueberspringen (nur dann spiegelt der Lauf blind von hier nach dort).
+  [switch]$KeinEinholen,
   # Vor dem Spiegeln auf dem NAS Eigentuemer und Gruppenrechte geradeziehen (braucht SSH).
   [switch]$KeinRechteAbgleich,
   [string]$NasHost = 'unraid',
@@ -60,43 +62,86 @@ function Notizen($pfad) {
 if (-not (Test-Path -LiteralPath $Quelle)) { Write-Host "Quelle nicht gefunden: $Quelle" -ForegroundColor Red; exit 2 }
 if (-not (Test-Path -LiteralPath $Ziel))   { Write-Host "Ziel nicht erreichbar: $Ziel" -ForegroundColor Red; exit 2 }
 
-# --- Einholen: was der Push-Kanal auf der NAS abgelegt hat, zuerst hierher ---------------------
-# Der Spiegel unten ist ein /MIR: er loescht am Ziel alles, was hier nicht existiert. Notizen, die
-# Hermes ueber den Capture-Kanal direkt in die NAS-Inbox legt, wuerden damit vernichtet, bevor sie
-# jemand gesehen hat - am 23.08.2026 genau so passiert, die Testnotiz war nach neun Sekunden weg.
-# Darum werden diese Ordner VOR dem Spiegeln in die Gegenrichtung geholt: kopieren, nie loeschen.
-$EinholOrdner = @('00-Inbox\hermes')
+# --- Einholen: was auf der NAS entstanden oder neuer ist, zuerst hierher ----------------------
+# Der Spiegel unten ist ein /MIR: er loescht am Ziel alles, was hier nicht existiert, und
+# ueberschreibt dort jede Aenderung. Anfangs betraf das nur den Push-Kanal (00-Inbox/hermes) --
+# am 23.08.2026 war eine zugestellte Testnotiz nach neun Sekunden weg. Seit Hermes den ganzen
+# Vault schreibend gemountet hat, reicht das nicht mehr: am 26.08.2026 wurden vier Notizen
+# ausserhalb der Inbox auf der NAS geloescht, und der naechste Spiegellauf machte das rueckgaengig,
+# ohne ein Wort zu sagen. Darum wird jetzt der GANZE Vault in die Gegenrichtung geprueft.
+#
+# Zwei Regeln, absichtlich unsymmetrisch:
+#   1. Was auf der NAS NEU oder NEUER ist, wird hierher geholt.
+#   2. Was hier existiert und auf der NAS FEHLT, wird NICHT hier geloescht - es wird gemeldet.
+# Regel 2 ist der Sicherheitsgurt: eine Loeschung ist nicht umkehrbar, ein doppelt vorhandener
+# Text schon. Wer auf der NAS etwas loeschen will, sagt es hier - dann verschwindet es an beiden
+# Orten. Sonst legt der Spiegel es dort wieder an, und die Meldung sagt, dass er das tut.
 $eingeholt = 0
-foreach ($ordner in $EinholOrdner) {
-  $von = Join-Path $Ziel $ordner
-  if (-not (Test-Path -LiteralPath $von)) { continue }
-  $nach = Join-Path $Quelle $ordner
-  $neue = @()
-  foreach ($d in (Get-ChildItem -LiteralPath $von -Recurse -File -ErrorAction SilentlyContinue)) {
-    $rel = $d.FullName.Substring($von.Length).TrimStart('\')
-    if (-not (Test-Path -LiteralPath (Join-Path $nach $rel))) { $neue += $rel }
+if (-not $KeinEinholen) {
+  # Zielbestand aufnehmen (dieselben Ausschluesse wie beim Spiegeln)
+  function Dateien($wurzel) {
+    $treffer = @{}
+    if (-not (Test-Path -LiteralPath $wurzel)) { return $treffer }
+    foreach ($d in (Get-ChildItem -LiteralPath $wurzel -Recurse -File -ErrorAction SilentlyContinue)) {
+      $rel = $d.FullName.Substring($wurzel.Length).TrimStart('\')
+      # Erstes Pfadsegment gegen die Ausschlussliste. $AusMuster verlangt Backslashes ringsum
+      # und greift bei einem relativen Pfad wie '_system\...' deshalb NICHT - dieser Fehler
+      # liess den Rueckkanal die Bauartefakte unter _system mitnehmen (171 Dateien).
+      if ($AusOrdner -contains ($rel -split '\\')[0]) { continue }
+      if (('\' + $rel) -match $AusMuster) { continue }
+      if ($AusDateien -contains (Split-Path $rel -Leaf)) { continue }
+      $treffer[$rel] = $d
+    }
+    return $treffer
   }
-  if ($neue.Count -eq 0) { continue }
-  if ($Testlauf) {
-    Write-Host "Testlauf: $($neue.Count) Datei(en) wuerden aus $ordner eingeholt." -ForegroundColor Cyan
-    foreach ($rel in $neue) { Write-Host "  wuerde einholen: $ordner\$rel" -ForegroundColor Cyan }
-    continue
+  $imZiel = Dateien $Ziel
+  $inQuelle = Dateien $Quelle
+
+  $neuDort = @(); $neuerDort = @(); $fehltDort = @()
+  foreach ($rel in $imZiel.Keys) {
+    if (-not $inQuelle.ContainsKey($rel)) { $neuDort += $rel; continue }
+    # 2 Sekunden Toleranz: /FFT im Spiegel arbeitet mit dieser Genauigkeit, sonst gilt eine
+    # Datei nach jedem Lauf faelschlich als "neuer".
+    $dz = $imZiel[$rel]; $dq = $inQuelle[$rel]
+    if ($dz.LastWriteTimeUtc -gt $dq.LastWriteTimeUtc.AddSeconds(2)) { $neuerDort += $rel }
   }
-  if (-not (Test-Path -LiteralPath $nach)) { New-Item -ItemType Directory -Path $nach -Force | Out-Null }
-  # /XC /XN /XO: nur holen, was hier FEHLT. Ohne diese drei wuerde robocopy auch bestehende
-  # Notizen mit der Fassung vom Ziel ueberschreiben - der Rueckkanal darf nur ergaenzen.
-  $null = & robocopy $von $nach '/E' '/XC' '/XN' '/XO' '/FFT' '/R:2' '/W:5' '/NP' '/NDL' '/NJH' '/NFL'
-  if ($LASTEXITCODE -ge 8) {
-    Write-Host "Abbruch: Einholen aus $ordner fehlgeschlagen (robocopy $LASTEXITCODE)." -ForegroundColor Red
-    Write-Host 'Ohne diesen Schritt wuerde der Spiegel die Notizen dort loeschen.' -ForegroundColor Yellow
-    exit 4
+  foreach ($rel in $inQuelle.Keys) { if (-not $imZiel.ContainsKey($rel)) { $fehltDort += $rel } }
+
+  $zuHolen = @($neuDort) + @($neuerDort)
+  if ($zuHolen.Count -gt 0) {
+    if ($Testlauf) {
+      Write-Host "Testlauf: $($zuHolen.Count) Datei(en) wuerden von der NAS eingeholt." -ForegroundColor Cyan
+      foreach ($rel in $neuDort)   { Write-Host "  wuerde einholen (neu):    $rel" -ForegroundColor Cyan }
+      foreach ($rel in $neuerDort) { Write-Host "  wuerde einholen (neuer):  $rel" -ForegroundColor Cyan }
+    } else {
+      # /XO: aeltere Quelldateien (hier: die NAS-Seite) ueberspringen. Ohne das wuerde eine hier
+      # gemachte Aenderung von der aelteren Fassung der NAS ueberschrieben.
+      $holArgs = @($Ziel, $Quelle, '/E', '/XO', '/FFT', '/DCOPY:D', '/R:2', '/W:5', '/NP', '/NDL', '/NJH', '/NFL')
+      foreach ($d in $AusOrdner)  { $holArgs += '/XD'; $holArgs += $d }
+      foreach ($dd in $AusDateien) { $holArgs += '/XF'; $holArgs += $dd }
+      $null = & robocopy @holArgs
+      if ($LASTEXITCODE -ge 8) {
+        Write-Host "Abbruch: Einholen von der NAS fehlgeschlagen (robocopy $LASTEXITCODE)." -ForegroundColor Red
+        Write-Host 'Ohne diesen Schritt wuerde der Spiegel dortige Aenderungen ueberschreiben.' -ForegroundColor Yellow
+        exit 4
+      }
+      foreach ($rel in $neuDort)   { Write-Host "  eingeholt (neu):   $rel" -ForegroundColor Green }
+      foreach ($rel in $neuerDort) { Write-Host "  eingeholt (neuer): $rel" -ForegroundColor Green }
+      $eingeholt = $zuHolen.Count
+      Write-Host "$eingeholt Datei(en) von der NAS eingeholt - sie ueberleben den Spiegel."
+    }
   }
-  foreach ($rel in $neue) { Write-Host "  eingeholt: $ordner\$rel" -ForegroundColor Green }
-  $eingeholt += $neue.Count
+
+  if ($fehltDort.Count -gt 0) {
+    Write-Host "" 
+    Write-Host "$($fehltDort.Count) Datei(en) gibt es hier, aber nicht mehr auf der NAS." -ForegroundColor Yellow
+    Write-Host 'Der Spiegel legt sie dort gleich wieder an. Wenn sie WEG sollen: hier loeschen.' -ForegroundColor Yellow
+    foreach ($rel in ($fehltDort | Select-Object -First 12)) { Write-Host "  $rel" -ForegroundColor DarkGray }
+    if ($fehltDort.Count -gt 12) { Write-Host "  ... und $($fehltDort.Count - 12) weitere" -ForegroundColor DarkGray }
+    Write-Host "" 
+  }
 }
-if ($eingeholt -gt 0) {
-  Write-Host "$eingeholt Notiz(en) vom Push-Kanal eingeholt - sie ueberleben den Spiegel."
-}
+
 $quellZahl = Notizen $Quelle
 $zielZahl  = Notizen $Ziel
 Write-Host "Quelle: $Quelle  ($quellZahl Notizen)"

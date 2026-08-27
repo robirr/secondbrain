@@ -24,6 +24,9 @@ services:
       # Ableiten beim Start abschalten (dann bleiben INDEX.md/graph.json/integrations.json
       # so, wie sie sind):  BRAIN_BUILD_INDEX=0
       - BRAIN_BUILD_INDEX=${BRAIN_BUILD_INDEX:-1}
+      # Waechter: leitet neu ab, sobald sich im Vault etwas aendert (0 = aus).
+      - BRAIN_WATCH=${BRAIN_WATCH:-1}
+      - BRAIN_WATCH_SEKUNDEN=${BRAIN_WATCH_SEKUNDEN:-30}
       # Push-Kanal (POST :8765/capture, Kopfzeile X-Capture-Token). OHNE Token startet er nicht —
       # das ist Absicht: ein offener Endpunkt liesse jeden im Netz in den Vault schreiben.
       # Den Wert in die .env NEBEN dieser Datei schreiben, nicht hierher:  CAPTURE_TOKEN=...

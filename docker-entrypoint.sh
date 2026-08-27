@@ -96,6 +96,23 @@ else
   echo "[capture] kein CAPTURE_TOKEN gesetzt - Push-Kanal bleibt aus (so gewollt, siehe docker-compose.yml)."
 fi
 
-# 5) nginx im Vordergrund = Hauptprozess des Containers
+# 5) Waechter: leitet neu ab, sobald sich im Vault etwas aendert.
+#    Ohne ihn entstehen Katalog, Landkarte und Suchindex NUR hier beim Start - eine Notiz, die
+#    Hermes waehrend des Betriebs ablegt, taucht erst nach dem naechsten Neustart in Suche und
+#    Oberflaeche auf. Am 26.08.2026 lagen so zwei Zustellungen stundenlang unsichtbar da.
+#    Abschaltbar mit BRAIN_WATCH=0; Takt ueber BRAIN_WATCH_SEKUNDEN (Vorgabe 30).
+if [ "${BRAIN_WATCH:-1}" = "1" ] && [ "${BRAIN_BUILD_INDEX:-1}" = "1" ] && [ -d "$VAULT" ]; then
+  if touch "$VAULT/.brain-write-probe" 2>/dev/null; then
+    rm -f "$VAULT/.brain-write-probe"
+    echo "[watch] Waechter startet (Takt ${BRAIN_WATCH_SEKUNDEN:-30}s)"
+    ( VAULT_ROOT="$VAULT" QMD_HOME="$HOME" node /app/scripts/watch-vault.mjs & )
+  else
+    echo "[watch] Vault ist read-only gemountet - Waechter nicht gestartet."
+  fi
+else
+  echo "[watch] abgeschaltet (BRAIN_WATCH=0, BRAIN_BUILD_INDEX=0 oder kein Vault)."
+fi
+
+# 6) nginx im Vordergrund = Hauptprozess des Containers
 echo "[app] nginx startet auf :80"
 exec nginx -g 'daemon off;'
